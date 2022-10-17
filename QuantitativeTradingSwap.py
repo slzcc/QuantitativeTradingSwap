@@ -65,12 +65,11 @@ class GridStrategy:
     def grid_run(self):
         # 获取一个 binance api 对象
         trade = tradeAPI.TradeApi(self.who)
-        # 判断用户凭证是否异常
-        checkAccount = trade.get_account()
-        if "code" in checkAccount.keys():
-            raise AssertionError("账户凭证存在异常, 返回内容 {}, 请检查后继续!".format(checkAccount))
         # 更改持仓模式，默认单向
-        trade.change_side(False)
+        checkAccount = trade.change_side(False)
+        if "code" in checkAccount.keys():
+            if checkAccount["code"] != -4059:
+                raise AssertionError("账户凭证存在异常, 返回内容 {}, 请检查后继续!".format(checkAccount))
         time.sleep(1)
         # 变换逐全仓，默认逐仓
         trade.change_margintype(self.symbol, isolated=False)

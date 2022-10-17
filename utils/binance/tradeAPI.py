@@ -230,7 +230,8 @@ class TradeApi:
     def _sign(self, secret="", params={}):
         data = params.copy()
         ts = int(1000 * time.time())
-        data.update({"timestamp": ts})
+        # data.update({"timestamp": ts})
+        data["timestamp"] = ts
         h = urlencode(data)
         b = bytearray()
         b.extend(secret.encode())

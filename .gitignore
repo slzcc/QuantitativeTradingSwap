@@ -65,6 +65,8 @@ DocHub
 __pycache__
 
 # QTS
+conf/*
+/conf/*
 /conf/authentication.json
 /conf/gridSymbol.json
 /conf/swapSymbol.json
