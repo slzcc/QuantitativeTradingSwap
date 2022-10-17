@@ -1,0 +1,10 @@
+{
+  "binance_usdt_test": {
+    "api": "",
+    "secret": ""
+  },
+  "binance_spot_test": {
+    "api": "",
+    "secret": ""
+  }
+}
