@@ -64,6 +64,7 @@ DocHub
 *.lock
 __pycache__
 
-
 # QTS
-#authentication.json
+/conf/authentication.json
+/conf/gridSymbol.json
+/conf/swapSymbol.json
