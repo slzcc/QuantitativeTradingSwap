@@ -20,11 +20,9 @@ from conf.settings import *
 from utils import public as PublicModels
 
 class TradeApi:
-    def __init__(self, who):
-        api_info = json.load(open('conf/authentication.json'))[who]
-        self.api = api_info['api']
-        self.secret = api_info['secret']
-        self.who = who
+    def __init__(self, key, secret):
+        self.api = key
+        self.secret = secret
 
     def change_side(self, one_side=True):
         '''更改持仓模式，默认单向'''
@@ -133,11 +131,7 @@ class TradeApi:
         ''' 开单
             :param side: BUY SELL
         '''
-        #if self.who == 'AAA':
-        if self.who == 'BBB':
-            path = "{}/fapi/v1/order/test".format(FUTURE_URL)
-        else:
-            path = "{}/fapi/v1/order".format(FUTURE_URL)
+        path = "{}/fapi/v1/order".format(FUTURE_URL)
         params = self._order(symbol, quantity, side, price, positionSide)
         params["recvWindow"] = binance_recvWindow
         query = self._sign(self.secret, params)
@@ -148,11 +142,7 @@ class TradeApi:
         # 止盈止损挂单
         # tp:STOP/TAKE_PROFIT/STOP_MARKET/TAKE_PROFIT_MARKET/TRAILING_STOP_MARKET
         # 跟踪回调范围[0.1,5]，百分比
-        #if self.who == 'AAA':
-        if self.who == 'BBB':
-            path = "{}/fapi/v1/order/test".format(FUTURE_URL)
-        else:
-            path = "{}/fapi/v1/order".format(FUTURE_URL)
+        path = "{}/fapi/v1/order".format(FUTURE_URL)
         params = {
             "symbol": symbol,
             "side": side,

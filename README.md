@@ -49,5 +49,5 @@
 
 ```
 $ pip3 install -r package.pip
-$ python3 main.py
+$ python3 main.py --symbol ETHUSDT多 --key xx --secret xx
 ```

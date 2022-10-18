@@ -4,19 +4,21 @@
 # 该策略运行时长约2-3个月, 收益曲线不平稳, 实盘当时有4k+U, 1个月收益60%，从5w的饼做多到6w9, 后面持续做多, 在暴跌中, 该策略注定了吃灰的结局, 如果能看出较大的趋势波段, 此策略堪称优秀, 币本位食用更佳
 import time
 import json
+import sys
 import numpy as np
 from utils.binance import tradeAPI
 from utils.binance.getKlineData import *
 from conf.settings import *
 from utils.public import *
 from utils import public as PublicModels
+from utils.QuantitativeTradingSwapUtils import command_line_args
 
 def to_log(symbol, msg):
     with open('logs/{}.log'.format(symbol),'a+') as f:
         f.write(msg + '\n')
 
 class GridStrategy:
-    def __init__(self, symbol, add_times=2, who='号1'):
+    def __init__(self, symbol, key, secret):
         """
         :param symbol: BTC
         :param price_precision: 2
@@ -28,12 +30,12 @@ class GridStrategy:
         :param T: 前高/低周期长度, 默认取1min计近似最优参
         :param free_money: 限制最大本金
         """
+        self.key = key                  # 用户凭证
+        self.secret = secret            # 用户凭证
         self.name = symbol              # 开单名称
         self.step = 0                   # 开单后多单会 -1, 空单会 +1
         self.symbol = symbol[:-1]       # 获取对币种进行切割如 ETHUSDT多 取 ETHUSDT
         self.side = symbol[-1]          # 获取对币种进行切割如 ETHUSDT多 取 多
-        self.add_times = add_times      # 无用字段
-        self.who = who                  # 账户名称
         self.avg = 0.0
         self.buy_qty = []               # 开空下单池
         self.sell_qty = []              # 开多下单池
@@ -65,7 +67,7 @@ class GridStrategy:
 
     def grid_run(self):
         # 获取一个 binance api 对象
-        trade = tradeAPI.TradeApi(self.who)
+        trade = tradeAPI.TradeApi(self.key, self.secret)
         # 更改持仓模式, 默认单向
         checkAccount = trade.change_side(False)
         if "code" in checkAccount.keys():
@@ -360,10 +362,10 @@ class GridStrategy:
                             to_log(self.name, '%s/%s 清仓, 已实现盈利=%.2f（最大持有量=%s,%.1f小时）\t%s' % (self.symbol, self.side, self.win, self.max_position, (time.time() - self.t_start) / 3600, PublicModels.changeTime(time.time())))
 
                         else:
-                            if self.present_price>=self.base_price * (1 + self.profit):
-                                if self.base_price>self.avg:
+                            if self.present_price >= self.base_price * (1 + self.profit):
+                                if self.base_price > self.avg:
                                     self.avg = self.avg_tmp
-                                self.avg_tmp = (self.avg*sum(self.sell_qty)/self.sell_qty[0] + self.present_price) / (sum(self.sell_qty)/self.sell_qty[0]+1)
+                                self.avg_tmp = (self.avg * sum(self.sell_qty) / self.sell_qty[0] + self.present_price) / (sum(self.sell_qty) / self.sell_qty[0] + 1)
                                 to_log(self.name, '{}/{} 浮盈加仓'.format(self.symbol, self.side))
                                 res_long = trade.open_order(self.symbol, 'BUY', self.sell_qty[0], price=None, positionSide='LONG')
                                 if not 'orderId' in res_long:
@@ -395,8 +397,7 @@ class GridStrategy:
             self.max_position = max(self.max_position, sum(self.buy_qty), sum(self.sell_qty)) / self.min_qty
 
 if __name__ == '__main__':
-    # gs = GridStrategy('BTCUSDT空', who='binance_usdt_test')
-    # gs = GridStrategy('BTCUSDT多', who='binance_usdt_test')
-    # gs = GridStrategy('ETHUSDT空', who='binance_usdt_test')
-    gs = GridStrategy('ETHUSDT多', who='binance_usdt_test')
+    args = command_line_args(sys.argv[1:])
+    conn_setting = {'symbol': args.symbol, 'key': args.key, 'secret': args.secret}
+    gs = GridStrategy(**conn_setting)
     gs.grid_run()
