@@ -65,7 +65,7 @@
     "min_qty": 0.1,
     "max_add_times": 8,
     "profit": 0.4,
-    "add_rate": 1.2,
+    "add_rate": 0.6,
     "position_times": 10,
     "T": 72,
     "if_loss": 0,

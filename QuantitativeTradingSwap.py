@@ -96,11 +96,12 @@ class GridStrategy:
                 self.read_conf(self.symbol + self.side)
             # if time.time() // 3600 - t_start // 3600 == 1:
             #     t_start = time.time()
-            to_log(self.name, '{}/{} U本位合约正在运行, 当前价格 {} \t {}'.format(self.symbol, self.side,self.present_price, PublicModels.changeTime(time.time())))
             # 记录最小购买单价
             self.position_size = self.min_qty
             # 如果策略为开 空 时
             if self.side != '多':
+                to_log(self.name, '{}/{} U本位合约正在运行, 当前价格 {} \t, 已购买币种总数 {}, 已经下单总次数 {} \t, 锚点位置 {} \t {}'.format(
+                    self.symbol, self.side, self.present_price, sum(self.buy_qty), len(self.buy_qty), self.step, PublicModels.changeTime(time.time())))
                 # 起始位置 0, 且没有开仓
                 if self.step == 0:
                     # 判断当前价格 小于/等于 后三根 k 线的最小值
@@ -260,6 +261,8 @@ class GridStrategy:
 
             # 如果策略为开 多 时
             else:
+                to_log(self.name, '{}/{} U本位合约正在运行, 当前价格 {} \t, 已购买币种总数 {}, 已经下单总次数 {} \t, 锚点位置 {} \t {}'.format(
+                    self.symbol, self.side, self.present_price, sum(self.sell_qty), len(self.sell_qty), self.step, PublicModels.changeTime(time.time())))
                 # 当起始位为 0, 则没有任何开单
                 if self.step == 0:
                     # 判断当前价格 大于/等于 后三根 k 线的最大值
@@ -378,6 +381,8 @@ class GridStrategy:
                                 self.sell_qty.append(self.sell_qty[0])
                                 self.win -= self.sell_qty[-1] * self.present_price * 4e-4
 
+                    ## 止盈最近的一次开仓
+                    ## 判断已经开单且 当前价格 >= 开单价格 * (1 + 0.003)
                     elif self.step > 1 and self.present_price >= self.avg * (1 + 0.003):
                         to_log(self.name, '{}/{} 平最近一次加仓'.format(self.symbol, self.side))
                         res_short = trade.open_order(self.symbol, 'SELL', self.sell_qty[-1], price=None, positionSide='LONG')
@@ -385,7 +390,7 @@ class GridStrategy:
                             to_log(self.name, '%s/%s 平多失败 \t %s \t %s' % (self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
                             continue
                         nums = self.sell_qty.pop()
-                        self.win += nums * (self.present_price - self.avg) * (1-4e-4)
+                        self.win += nums * (self.present_price - self.avg) * (1 - 4e-4)
                         self.step = 1
                         self.lowest_price = 100000.0
                         self.base_price = self.avg
