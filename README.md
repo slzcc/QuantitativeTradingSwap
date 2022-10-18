@@ -20,21 +20,6 @@
 	},
 ```
 
-配置文件 `conf/authentication.json` 中，主要定义 `key/secret` 凭证信息:
-
-```
-{
-  "binance_usdt_test": {
-    "api": "x",
-    "secret": "x"
-  },
-  "binance_spot_test": {
-    "api": "x",
-    "secret": "x"
-  }
-}
-```
-
 配置文件 `conf/settings.py` 中, 主要定义使用的 API 类型以及一些全局配置信息等。
 
 ## 日志

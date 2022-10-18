@@ -238,7 +238,7 @@ class GridStrategy:
                                 self.buy_qty.append(self.buy_qty[0])
                                 self.win -= self.buy_qty[-1] * self.present_price * 4e-4
                                 to_log(self.name, '%s/%s 当前仓位成本=%.1f, 均价=%.3f, 浮盈=%.2f, 已实现盈利=%.2f（最大持有量=%s, %.1f小时）\t %s' % (
-                                    self.symbol, sum(self.buy_qty) * self.avg_tmp, self.avg_tmp, sum(self.buy_qty) * (self.present_price - self.avg), self.win,
+                                    self.symbol, self.side, sum(self.buy_qty) * self.avg_tmp, self.avg_tmp, sum(self.buy_qty) * (self.present_price - self.avg), self.win,
                                     self.max_position, (time.time() - self.t_start) / 3600, PublicModels.changeTime(time.time())))
 
                     elif self.step < -1 and self.present_price <= self.avg * (1 - 0.003):
