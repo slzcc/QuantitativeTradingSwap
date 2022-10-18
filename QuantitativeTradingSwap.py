@@ -1,4 +1,3 @@
-
 # 马丁微调, 设置浮亏补仓次数上限, 到达上限会挂上止盈单后启动下一轮新马丁
 # 在浮盈时固定间隔加一倍底仓, 按回调率跟踪止盈, 暂定浮盈的20%，比如浮盈5%回撤至4%，可根据实际调整一个动态回调算法
 # 该策略运行时长约2-3个月, 收益曲线不平稳, 实盘当时有4k+U, 1个月收益60%，从5w的饼做多到6w9, 后面持续做多, 在暴跌中, 该策略注定了吃灰的结局, 如果能看出较大的趋势波段, 此策略堪称优秀, 币本位食用更佳
@@ -28,7 +27,6 @@ class GridStrategy:
         :param add_rate: 加仓间隔，%
         :param add_times: 加仓倍率, 默认2倍
         :param T: 前高/低周期长度, 默认取1min计近似最优参
-        :param free_money: 限制最大本金
         """
         self.key = key                  # 用户凭证
         self.secret = secret            # 用户凭证
@@ -94,13 +92,11 @@ class GridStrategy:
             # 如果是起始节点, 则读取 symbol 配置文件初始化参数
             if self.step == 0:
                 self.read_conf(self.symbol + self.side)
-            # if time.time() // 3600 - t_start // 3600 == 1:
-            #     t_start = time.time()
             # 记录最小购买单价
             self.position_size = self.min_qty
             # 如果策略为开 空 时
             if self.side != '多':
-                to_log(self.name, '{}/{} U本位合约正在运行, 当前价格 {} \t, 已购买币种总数 {}, 已经下单总次数 {} \t, 锚点位置 {} \t {}'.format(
+                to_log(self.name, '{}/{} U本位合约正在运行, 当前价格 {} , 已购买币种总数 {} , 已经下单总次数 {} , 锚点位置 {} \t {}'.format(
                     self.symbol, self.side, self.present_price, sum(self.buy_qty), len(self.buy_qty), self.step, PublicModels.changeTime(time.time())))
                 # 起始位置 0, 且没有开仓
                 if self.step == 0:
@@ -201,7 +197,7 @@ class GridStrategy:
                         self.base_price = 0.0
                         self.avg_tmp = 0.0
 
-                    # 判断 第一次开仓后 && (当前价格 小于等于 购买价格 * (1 - ))
+                    # 判断 第一次开仓后 && (当前价格 小于等于 购买价格 * (1 - 0.002)) && 最低价格 < 100000
                     elif self.step == -1 and (self.present_price <= self.avg * (1 - self.profit) or (self.present_price <= self.avg * (1 - 0.002) and self.lowest_price < 100000)):
                         self.lowest_price = min(self.present_price, self.lowest_price)
                         if self.present_price >= self.lowest_price * (1 + (1 - self.lowest_price / self.avg) / 5):
@@ -261,7 +257,7 @@ class GridStrategy:
 
             # 如果策略为开 多 时
             else:
-                to_log(self.name, '{}/{} U本位合约正在运行, 当前价格 {} \t, 已购买币种总数 {}, 已经下单总次数 {} \t, 锚点位置 {} \t {}'.format(
+                to_log(self.name, '{}/{} U本位合约正在运行, 当前价格 {} , 已购买币种总数 {} , 已经下单总次数 {} , 锚点位置 {} \t {}'.format(
                     self.symbol, self.side, self.present_price, sum(self.sell_qty), len(self.sell_qty), self.step, PublicModels.changeTime(time.time())))
                 # 当起始位为 0, 则没有任何开单
                 if self.step == 0:
@@ -292,7 +288,6 @@ class GridStrategy:
 
                 # 判断起始位大于 0, 至少开过一次仓
                 elif self.step > 0:
-                    # condition = sum(self.sell_qty)*self.present_price<self.position_times*self.free_money/2
                     # 判断当前 开单数量 是否小于 最大可开单值
                     condition = sum(self.sell_qty) / self.min_qty < self.max_add_times
                     # 判断 没有亏损 && (not 开单数量上限) && 当前价格 小于等于 最新下单价格 * (1 - 容忍爆仓率 * )
@@ -362,7 +357,7 @@ class GridStrategy:
                             self.highest_price = 0.0
                             self.base_price = 0.0
                             self.avg_tmp = 0.0
-                            to_log(self.name, '%s/%s 清仓, 已实现盈利=%.2f（最大持有量=%s,%.1f小时）\t%s' % (self.symbol, self.side, self.win, self.max_position, (time.time() - self.t_start) / 3600, PublicModels.changeTime(time.time())))
+                            to_log(self.name, '%s/%s 清仓, 已实现盈利=%.2f（最大持有量=%s, %.1f小时）\t%s' % (self.symbol, self.side, self.win, self.max_position, (time.time() - self.t_start) / 3600, PublicModels.changeTime(time.time())))
 
                         else:
                             if self.present_price >= self.base_price * (1 + self.profit):
@@ -395,10 +390,10 @@ class GridStrategy:
                         self.lowest_price = 100000.0
                         self.base_price = self.avg
                         self.last_buy = self.avg
-                        to_log(self.name, '%s/%s 剩余仓位成本=%.1f, 均价=%.3f, 浮盈=%.2f, 已实现盈利=%.2f（最大持有量=%s, %.1f小时）\t %s' % (self.symbol, self.side, sum(self.sell_qty)*self.avg, self.avg, sum(self.sell_qty) * (self.present_price - self.avg), self.win, self.max_position, (time.time() - self.t_start) / 3600, PublicModels.changeTime(time.time())))
+                        to_log(self.name, '%s/%s 剩余仓位成本=%.1f, 均价=%.3f, 浮盈=%.2f, 已实现盈利=%.2f（最大持有量=%s, %.1f小时）\t %s' % (
+                            self.symbol, self.side, sum(self.sell_qty) * self.avg, self.avg, sum(self.sell_qty) * (self.present_price - self.avg), self.win, self.max_position, (time.time() - self.t_start) / 3600, PublicModels.changeTime(time.time())))
 
-                # time.sleep(max(2,self.rule['rateLimits'][0]['limit'] // 600))
-                time.sleep(6)
+                time.sleep(3)
             self.max_position = max(self.max_position, sum(self.buy_qty), sum(self.sell_qty)) / self.min_qty
 
 if __name__ == '__main__':
