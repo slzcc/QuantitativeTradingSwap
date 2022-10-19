@@ -109,7 +109,6 @@ class GridStrategy:
                         # 判断下单是否成功
                         if not 'orderId' in res_short:
                             to_log(self.name, '{}/{} 开空失败 \t {} \t {}'.format(self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
-                            time.sleep(1)
                             continue
 
                         # 记录开仓价格
@@ -292,7 +291,6 @@ class GridStrategy:
                         self.last_sell = self.avg
 
                         to_log(self.name, '%s/%s 剩余仓位成本=%.1f, 均价=%.3f, 浮盈=%.2f, 已实现盈利=%.2f（最大持有量=%s, %.1f小时）\t %s' % (self.symbol, self.side, sum(self.buy_qty)*self.avg, self.avg, sum(self.buy_qty) * (self.avg - self.present_price), self.win, self.max_position, (time.time() - self.t_start) / 3600, PublicModels.changeTime(time.time())))
-                time.sleep(1)
 
             # 如果策略为开 多 时
             else:
@@ -314,7 +312,6 @@ class GridStrategy:
                         # 判断是否下单成功
                         if not 'orderId' in res_long:
                             to_log(self.name, '{}/{} 开多失败 \t {} \t {}'.format(self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
-                            time.sleep(1)
                             continue
 
                         self.avg = self.present_price
@@ -467,7 +464,6 @@ class GridStrategy:
                         to_log(self.name, '%s/%s 剩余仓位成本=%.1f, 均价=%.3f, 浮盈=%.2f, 已实现盈利=%.2f（最大持有量=%s, %.1f小时）\t %s' % (
                             self.symbol, self.side, sum(self.sell_qty) * self.avg, self.avg, sum(self.sell_qty) * (self.present_price - self.avg), self.win, self.max_position, (time.time() - self.t_start) / 3600, PublicModels.changeTime(time.time())))
 
-                time.sleep(1)
             self.max_position = max(self.max_position, sum(self.buy_qty), sum(self.sell_qty)) / self.min_qty
 
 if __name__ == '__main__':
