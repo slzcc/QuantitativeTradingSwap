@@ -5,7 +5,9 @@ import time
 import json
 import sys
 import logging
+import os
 import numpy as np
+
 from utils.binance import tradeAPI
 from utils.binance.getKlineData import *
 from conf.settings import *
@@ -73,6 +75,10 @@ class GridStrategy:
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         console_handler.setFormatter(formatter)
         file_handler.setFormatter(formatter)
+
+        # 如果日志目录不存在进行创建
+        if not os.path.exists('logs'):
+            os.mkdir('logs')
 
     def read_conf(self, symbol):
         """
