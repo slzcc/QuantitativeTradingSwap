@@ -57,7 +57,7 @@ controllers/MobileControllers/
 static/Admin/default/img/
 uploads/
 .idea
-/logs/*.log
+/logs/*
 /cache/*
 DocHub
 *.conf
