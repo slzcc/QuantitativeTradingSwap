@@ -16,6 +16,8 @@ from datetime import datetime, timedelta
 
 import logging
 import time
+import re
+import types
 
 # 创建日志器对象
 logger = logging.getLogger(__name__)
@@ -70,3 +72,18 @@ def changeTime(sec):
     """
     base_time = datetime.strptime('1970-01-01 00:00:00.0', '%Y-%m-%d %H:%M:%S.%f')
     return str(base_time + timedelta(seconds=8 * 3600 + int(sec)))
+
+def getClassENV(cls):
+    """
+    获取 Class 静态环境变量
+    """
+    _strTmp = ""
+    for index, item in enumerate(dir(cls)):
+        if not re.search('__', item):
+            _cls = getattr(cls, item)
+            if not isinstance(_cls, types.MethodType):
+                if (index + 1) == len(dir(cls)):
+                    _strTmp += "{}: {}".format(item, _cls)
+                else:
+                    _strTmp += "{}: {}, ".format(item, _cls)
+    return _strTmp

@@ -63,6 +63,7 @@ DocHub
 *.conf
 *.lock
 __pycache__
+test
 
 # QTS
 conf/*

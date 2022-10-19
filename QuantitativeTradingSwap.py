@@ -103,7 +103,7 @@ class GridStrategy:
 
                     # 判断数据是否为空
                     if sell_condition1 or sell_condition2:
-                        to_log(self.name, '{}/{} 下单开空'.format(self.symbol, self.side))
+                        to_log(self.name, '{}/{} 下单开空 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
                         # 下单开空, 市价开单
                         res_short = trade.open_order(self.symbol, 'SELL', self.position_size, price=None, positionSide='SHORT')
                         # 判断下单是否成功
@@ -138,7 +138,9 @@ class GridStrategy:
                     ## 判断 亏损 && (是否可以继续开仓) && 当前价格 大于等于 准备出售价格 乘以 (1 + 1.2 * 开仓数量比例值) ep: 19700.0 * (1 + 1.2 * np.log(1 - -1))
                     ## 主要判断亏损如果超过范围则进行止损平仓（开仓数量到达上限）
                     if self.if_loss and (not condition) and self.present_price >= self.last_sell * (1 + self.add_rate * np.log(1 - self.step)):
-                        to_log(self.name, '{}/{} 平空止损'.format(self.symbol, self.side))
+                        to_log(self.name, '{}/{} 平空止损 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
+                        _env = '"key": {}, "secret": {}, "name": {}, "step": {}, "symbol": {}, "side": {}, "avg": {}, "buy_qty": {}, "sell_qty": {}, "win": {}, "last_buy": {}, "last_sell": {}, "lowest_price": {}, "highest_price": {}, "base_price": {}, "avg_tmp": {}, "max_position": {}, "t_start": {}"'.format(self.key, self.secret, self.name, self.step, self.symbol, self.side, self.avg, self.buy_qty, self.sell_qty, self.win, self.last_buy, self.last_sell, self.lowest_price, self.highest_price, self.base_price, self.avg_tmp, self.max_position, self.t_start)
+                        to_log(self.name, _env)
                         to_log(self.name, 'condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.last_sell * (1 + self.add_rate * np.log(1 - self.step))))
                         # 下单平空(市价平所有仓位)
                         res_long = trade.open_order(self.symbol, 'BUY', sum(self.buy_qty), price=None, positionSide='SHORT')
@@ -171,7 +173,9 @@ class GridStrategy:
                     elif condition and self.present_price >= self.last_sell * (1 + self.add_rate * np.log(1 - self.step)):
                         self.highest_price = max(self.present_price, self.highest_price)
                         if self.present_price <= self.highest_price * (1 - (self.highest_price / self.last_sell -1 ) / 5):
-                            to_log(self.name, '{}/{} 加仓'.format(self.symbol, self.side))
+                            to_log(self.name, '{}/{} 加仓 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
+                            _env = '"key": {}, "secret": {}, "name": {}, "step": {}, "symbol": {}, "side": {}, "avg": {}, "buy_qty": {}, "sell_qty": {}, "win": {}, "last_buy": {}, "last_sell": {}, "lowest_price": {}, "highest_price": {}, "base_price": {}, "avg_tmp": {}, "max_position": {}, "t_start": {}"'.format(self.key, self.secret, self.name, self.step, self.symbol, self.side, self.avg, self.buy_qty, self.sell_qty, self.win, self.last_buy, self.last_sell, self.lowest_price, self.highest_price, self.base_price, self.avg_tmp, self.max_position, self.t_start)
+                            to_log(self.name, _env)
                             to_log(self.name, 'condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.last_sell * (1 + self.add_rate * np.log(1 - self.step))))
                             # 下单加仓
                             res_short = trade.open_order(self.symbol, 'SELL', sum(self.buy_qty), price=None, positionSide='SHORT')
@@ -182,11 +186,13 @@ class GridStrategy:
                                 else:
                                     to_log(self.name, '{}/{} 加仓失败 \t {} \t {}'.format(self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
                                 continue
+
                             self.avg = (self.avg + self.present_price) / 2
                             self.last_sell = self.present_price
                             self.buy_qty.append(sum(self.buy_qty))
                             self.step -= 1
                             self.win -= self.buy_qty[-1] * self.present_price * 4e-4
+
                             to_log(self.name, '%s/%s 当前仓位成本=%.1f, 均价=%.3f, 浮亏=%.2f, 已实现盈利=%.2f（最大持有量=%s,%.1f小时）\t%s' % (
                                 self.symbol, self.side, sum(self.buy_qty) * self.avg, self.avg, sum(self.buy_qty) * (self.avg - self.present_price), self.win,
                                 self.max_position, (time.time() - self.t_start) / 3600, PublicModels.changeTime(time.time())))
@@ -195,10 +201,14 @@ class GridStrategy:
                     ## 判断 not condition 能继续开仓且 当前最新价格 >= 购买价格 * (1 + 加减仓百分比阀值 * 下单数量的自然对数)
                     elif (not condition) and self.present_price >= self.last_sell * (1 + self.add_rate * np.log(1 - self.step)):
                         # 给本轮马丁挂上止盈, 重置重新开始下一轮
-                        to_log(self.name, '{}/{} 重新开始下一轮'.format(self.symbol, self.side))
+                        to_log(self.name, '{}/{} 重新开始下一轮 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
+                        _env = '"key": {}, "secret": {}, "name": {}, "step": {}, "symbol": {}, "side": {}, "avg": {}, "buy_qty": {}, "sell_qty": {}, "win": {}, "last_buy": {}, "last_sell": {}, "lowest_price": {}, "highest_price": {}, "base_price": {}, "avg_tmp": {}, "max_position": {}, "t_start": {}"'.format(self.key, self.secret, self.name, self.step, self.symbol, self.side, self.avg, self.buy_qty, self.sell_qty, self.win, self.last_buy, self.last_sell, self.lowest_price, self.highest_price, self.base_price, self.avg_tmp, self.max_position, self.t_start)
+                        to_log(self.name, _env)
                         to_log(self.name, 'condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.last_sell * (1 + self.add_rate * np.log(1 - self.step))))
-                        res_long = trade.open_order(self.symbol, 'BUY', sum(self.buy_qty[-2:]), price=round(self.avg*(1-0.002), self.price_precision), positionSide='SHORT')
-                        res_long = trade.open_order(self.symbol, 'BUY', sum(self.buy_qty[:-2]), price=round(self.avg*(1-self.profit), self.price_precision), positionSide='SHORT')
+
+                        res_long = trade.open_order(self.symbol, 'BUY', sum(self.buy_qty[-2:]), price=round(self.avg * (1 - 0.002), self.price_precision), positionSide='SHORT')
+                        res_long = trade.open_order(self.symbol, 'BUY', sum(self.buy_qty[:-2]), price=round(self.avg * (1 - self.profit), self.price_precision), positionSide='SHORT')
+
                         self.step = 0
                         self.avg = 0.0
                         self.last_sell = 0.0
@@ -212,14 +222,17 @@ class GridStrategy:
                     elif self.step == -1 and (self.present_price <= self.avg * (1 - self.profit) or (self.present_price <= self.avg * (1 - 0.002) and self.lowest_price < 100000)):
                         self.lowest_price = min(self.present_price, self.lowest_price)
                         if self.present_price >= self.lowest_price * (1 + (1 - self.lowest_price / self.avg) / 5):
-                            to_log(self.name, '{}/{} 平空'.format(self.symbol, self.side))
+                            to_log(self.name, '{}/{} 平空 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
+                            _env = '"key": {}, "secret": {}, "name": {}, "step": {}, "symbol": {}, "side": {}, "avg": {}, "buy_qty": {}, "sell_qty": {}, "win": {}, "last_buy": {}, "last_sell": {}, "lowest_price": {}, "highest_price": {}, "base_price": {}, "avg_tmp": {}, "max_position": {}, "t_start": {}"'.format(self.key, self.secret, self.name, self.step, self.symbol, self.side, self.avg, self.buy_qty, self.sell_qty, self.win, self.last_buy, self.last_sell, self.lowest_price, self.highest_price, self.base_price, self.avg_tmp, self.max_position, self.t_start)
+                            to_log(self.name, _env)
                             to_log(self.name, 'condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.last_sell * (1 + self.add_rate * np.log(1 - self.step))))
 
                             res_long = trade.open_order(self.symbol, 'BUY', sum(self.buy_qty), price=None, positionSide='SHORT')
                             if not 'orderId' in res_long:
                                 to_log(self.name, '%s/%s 平空失败 \t %s \t %s' % (self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
                                 continue
-                            self.win += sum(self.buy_qty) * (self.avg - self.present_price) * (1-4e-4)
+
+                            self.win += sum(self.buy_qty) * (self.avg - self.present_price) * (1 - 4e-4)
                             self.step = 0
                             self.avg = 0.0
                             self.last_sell = 0.0
@@ -228,6 +241,7 @@ class GridStrategy:
                             self.highest_price = 0.0
                             self.base_price = 0.0
                             self.avg_tmp = 0.0
+
                             to_log(self.name, '%s/%s 清仓, 已实现盈利=%.2f（最大持有量=%s, %.1f小时）\t %s' % (self.symbol, self.side, self.win, self.max_position, (time.time() - self.t_start) / 3600, PublicModels.changeTime(time.time())))
 
                         else:
@@ -235,7 +249,10 @@ class GridStrategy:
                                 if self.base_price < self.avg:
                                     self.avg = self.avg_tmp
                                 self.avg_tmp = (self.avg * sum(self.buy_qty) / self.buy_qty[0] + self.present_price) / (sum(self.buy_qty) / self.buy_qty[0] + 1)
-                                to_log(self.name, '{}/{} 浮盈加仓'.format(self.symbol, self.side))
+
+                                to_log(self.name, '{}/{} 浮盈加仓 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
+                                _env = '"key": {}, "secret": {}, "name": {}, "step": {}, "symbol": {}, "side": {}, "avg": {}, "buy_qty": {}, "sell_qty": {}, "win": {}, "last_buy": {}, "last_sell": {}, "lowest_price": {}, "highest_price": {}, "base_price": {}, "avg_tmp": {}, "max_position": {}, "t_start": {}"'.format(self.key, self.secret, self.name, self.step, self.symbol, self.side, self.avg, self.buy_qty, self.sell_qty, self.win, self.last_buy, self.last_sell, self.lowest_price, self.highest_price, self.base_price, self.avg_tmp, self.max_position, self.t_start)
+                                to_log(self.name, _env)
                                 to_log(self.name, 'condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.last_sell * (1 + self.add_rate * np.log(1 - self.step))))
 
                                 res_short = trade.open_order(self.symbol, 'SELL', self.buy_qty[0], price=None, positionSide='SHORT')
@@ -249,12 +266,15 @@ class GridStrategy:
                                 self.base_price *= 1 - self.profit
                                 self.buy_qty.append(self.buy_qty[0])
                                 self.win -= self.buy_qty[-1] * self.present_price * 4e-4
+
                                 to_log(self.name, '%s/%s 当前仓位成本=%.1f, 均价=%.3f, 浮盈=%.2f, 已实现盈利=%.2f（最大持有量=%s, %.1f小时）\t %s' % (
                                     self.symbol, self.side, sum(self.buy_qty) * self.avg_tmp, self.avg_tmp, sum(self.buy_qty) * (self.present_price - self.avg), self.win,
                                     self.max_position, (time.time() - self.t_start) / 3600, PublicModels.changeTime(time.time())))
 
                     elif self.step < -1 and self.present_price <= self.avg * (1 - 0.003):
-                        to_log(self.name, '{}/{} 平最近一次加仓'.format(self.symbol, self.side))
+                        to_log(self.name, '{}/{} 平最近一次加仓 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
+                        _env = '"key": {}, "secret": {}, "name": {}, "step": {}, "symbol": {}, "side": {}, "avg": {}, "buy_qty": {}, "sell_qty": {}, "win": {}, "last_buy": {}, "last_sell": {}, "lowest_price": {}, "highest_price": {}, "base_price": {}, "avg_tmp": {}, "max_position": {}, "t_start": {}"'.format(self.key, self.secret, self.name, self.step, self.symbol, self.side, self.avg, self.buy_qty, self.sell_qty, self.win, self.last_buy, self.last_sell, self.lowest_price, self.highest_price, self.base_price, self.avg_tmp, self.max_position, self.t_start)
+                        to_log(self.name, _env)
                         to_log(self.name, 'condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.avg * (1 - 0.003)))
 
                         # 下单平仓
@@ -263,12 +283,14 @@ class GridStrategy:
                         if not 'orderId' in res_long:
                             to_log(self.name, '{}/{} 平空失败 \t {} \t {}'.format(self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
                             continue
+
                         nums = self.buy_qty.pop()
                         self.win += nums * (self.avg - self.present_price) * (1-4e-4)
                         self.step = -1
                         self.base_price = self.avg
                         self.highest_price = 0.0
                         self.last_sell = self.avg
+
                         to_log(self.name, '%s/%s 剩余仓位成本=%.1f, 均价=%.3f, 浮盈=%.2f, 已实现盈利=%.2f（最大持有量=%s, %.1f小时）\t %s' % (self.symbol, self.side, sum(self.buy_qty)*self.avg, self.avg, sum(self.buy_qty) * (self.avg - self.present_price), self.win, self.max_position, (time.time() - self.t_start) / 3600, PublicModels.changeTime(time.time())))
                 time.sleep(1)
 
@@ -286,7 +308,7 @@ class GridStrategy:
                     
                     # 判断是否存在
                     if buy_condition1 or buy_condition2:
-                        to_log(self.name, '{}/{} 开多'.format(self.symbol, self.side))
+                        to_log(self.name, '{}/{} 开多 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
                         # 下单开多
                         res_long = trade.open_order(self.symbol, 'BUY', self.position_size, price=None, positionSide='LONG')
                         # 判断是否下单成功
@@ -294,14 +316,16 @@ class GridStrategy:
                             to_log(self.name, '{}/{} 开多失败 \t {} \t {}'.format(self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
                             time.sleep(1)
                             continue
+
                         self.avg = self.present_price
                         self.base_price = self.avg
                         self.sell_qty.append(self.position_size)
                         self.step += 1
                         self.last_buy = self.present_price
                         self.win -= self.position_size * self.present_price * 4e-4
+
                         # 开单成功后
-                        to_log(self.name, '%s/%s 当前仓位成本=%.1f, 开仓价=%.3f\t%s' % (self.symbol, self.side, sum(self.sell_qty) * self.avg, self.avg, PublicModels.changeTime(time.time())))
+                        to_log(self.name, '%s/%s 当前仓位成本=%.1f, 开仓价=%.3f \t %s' % (self.symbol, self.side, sum(self.sell_qty) * self.avg, self.avg, PublicModels.changeTime(time.time())))
 
                 # 判断起始位大于 0, 至少开过一次仓
                 elif self.step > 0:
@@ -309,13 +333,16 @@ class GridStrategy:
                     condition = sum(self.sell_qty) / self.min_qty < self.max_add_times
                     # 判断 没有亏损 && (not 开单数量上限) && 当前价格 小于等于 最新下单价格 * (1 - 容忍爆仓率 * )
                     if self.if_loss and (not condition) and self.present_price <= self.last_buy * (1 - self.add_rate * np.log(1 + self.step)):
-                        to_log(self.name, '{}/{} 平多止损'.format(self.symbol, self.side))
+                        to_log(self.name, '{}/{} 平多止损 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
+                        _env = '"key": {}, "secret": {}, "name": {}, "step": {}, "symbol": {}, "side": {}, "avg": {}, "buy_qty": {}, "sell_qty": {}, "win": {}, "last_buy": {}, "last_sell": {}, "lowest_price": {}, "highest_price": {}, "base_price": {}, "avg_tmp": {}, "max_position": {}, "t_start": {}"'.format(self.key, self.secret, self.name, self.step, self.symbol, self.side, self.avg, self.buy_qty, self.sell_qty, self.win, self.last_buy, self.last_sell, self.lowest_price, self.highest_price, self.base_price, self.avg_tmp, self.max_position, self.t_start)
+                        to_log(self.name, _env)
                         to_log(self.name, 'condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.last_buy * (1 - self.add_rate * np.log(1 + self.step))))
 
                         res_short = trade.open_order(self.symbol, 'SELL', sum(self.sell_qty), price=None, positionSide='LONG')
                         if not 'orderId' in res_short:
-                            to_log(self.name, '%s/%s 平多失败 \t%s\t%s' % (self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
+                            to_log(self.name, '%s/%s 平多失败 \t %s \t %s' % (self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
                             continue
+
                         self.win += sum(self.sell_qty) * (self.present_price - self.avg) * (1-4e-4)
                         self.step = 0
                         self.avg = 0.0
@@ -329,28 +356,37 @@ class GridStrategy:
                     elif condition and self.present_price <= self.last_buy * (1 - self.add_rate * np.log(1 + self.step)):
                         self.lowest_price = min(self.present_price, self.lowest_price)
                         if self.present_price >= self.lowest_price * (1 + (1 - self.lowest_price / self.last_buy) / 5):
-                            to_log(self.name, '{}/{} 加仓'.format(self.symbol, self.side))
+                            to_log(self.name, '{}/{} 加仓 {} {}'.format(self.symbol, self.side, sum(self.sell_qty), PublicModels.changeTime(time.time())))
+                            _env = '"key": {}, "secret": {}, "name": {}, "step": {}, "symbol": {}, "side": {}, "avg": {}, "buy_qty": {}, "sell_qty": {}, "win": {}, "last_buy": {}, "last_sell": {}, "lowest_price": {}, "highest_price": {}, "base_price": {}, "avg_tmp": {}, "max_position": {}, "t_start": {}"'.format(self.key, self.secret, self.name, self.step, self.symbol, self.side, self.avg, self.buy_qty, self.sell_qty, self.win, self.last_buy, self.last_sell, self.lowest_price, self.highest_price, self.base_price, self.avg_tmp, self.max_position, self.t_start)
+                            to_log(self.name, _env)
                             to_log(self.name, 'condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.last_buy * (1 - self.add_rate * np.log(1 + self.step))))
 
                             res_long = trade.open_order(self.symbol, 'BUY', sum(self.sell_qty), price=None, positionSide='LONG')
                             if not 'orderId' in res_long:
                                 if res_long['msg'] == 'Margin is insufficient.':
-                                    to_log(self.name, '%s/%s 可用金不足 \t%s\t%s' % (self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
+                                    to_log(self.name, '%s/%s 可用金不足 \t %s \t %s' % (self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
                                 else:
-                                    to_log(self.name, '%s/%s 加仓失败 \t%s\t%s'%(self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
+                                    to_log(self.name, '%s/%s 加仓失败 \t %s \t %s'%(self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
                                 continue
+
                             self.avg = (self.avg + self.present_price) / 2
                             self.last_buy = self.present_price
                             self.sell_qty.append(sum(self.sell_qty))
                             self.step += 1
                             self.win -= self.sell_qty[-1] * self.present_price * 4e-4
+
                             to_log(self.name, '%s/%s 当前仓位成本=%.1f, 均价=%.3f, 浮亏=%.2f, 已实现盈利=%.2f（最大持有量=%s, %.1f小时）\t %s' % (self.symbol, self.side, sum(self.sell_qty) * self.avg, self.avg,
                                     sum(self.sell_qty) * (self.present_price - self.avg), self.win, self.max_position, (time.time() - self.t_start) / 3600, PublicModels.changeTime(time.time())))
 
                     elif (not condition) and self.present_price <= self.last_buy * (1 - self.add_rate * np.log(1 + self.step)):
-                        to_log(self.name, '{}/{} 重新开始下一轮'.format(self.symbol, self.side))
+                        to_log(self.name, '{}/{} 重新开始下一轮 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
+                        _env = '"key": {}, "secret": {}, "name": {}, "step": {}, "symbol": {}, "side": {}, "avg": {}, "buy_qty": {}, "sell_qty": {}, "win": {}, "last_buy": {}, "last_sell": {}, "lowest_price": {}, "highest_price": {}, "base_price": {}, "avg_tmp": {}, "max_position": {}, "t_start": {}"'.format(self.key, self.secret, self.name, self.step, self.symbol, self.side, self.avg, self.buy_qty, self.sell_qty, self.win, self.last_buy, self.last_sell, self.lowest_price, self.highest_price, self.base_price, self.avg_tmp, self.max_position, self.t_start)
+                        to_log(self.name, _env)
+                        to_log(self.name, 'condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.last_buy * (1 - self.add_rate * np.log(1 + self.step))))
+
                         trade.open_order(self.symbol, 'SELL', sum(self.sell_qty[-2:]), price=round(self.avg*(1+0.002),self.price_precision), positionSide='LONG')
                         trade.open_order(self.symbol, 'SELL', sum(self.sell_qty[:-2]), price=round(self.avg*(1+self.profit),self.price_precision), positionSide='LONG')
+
                         self.step = 0
                         self.avg = 0.0
                         self.last_buy = 0.0
@@ -364,13 +400,16 @@ class GridStrategy:
                         self.highest_price = max(self.present_price, self.highest_price)
                         # 最高处回调达到止盈位置则清仓
                         if self.present_price <= self.highest_price * (1 - (self.highest_price / self.avg - 1) / 5):  # 重仓情形考虑回本平一半或平xx%的仓位, 待计算, 剩下依然重仓考虑吃多少点清仓
-                            to_log(self.name, '{}/{} 平多'.format(self.symbol, self.side))
+                            to_log(self.name, '{}/{} 平多 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
+                            _env = '"key": {}, "secret": {}, "name": {}, "step": {}, "symbol": {}, "side": {}, "avg": {}, "buy_qty": {}, "sell_qty": {}, "win": {}, "last_buy": {}, "last_sell": {}, "lowest_price": {}, "highest_price": {}, "base_price": {}, "avg_tmp": {}, "max_position": {}, "t_start": {}"'.format(self.key, self.secret, self.name, self.step, self.symbol, self.side, self.avg, self.buy_qty, self.sell_qty, self.win, self.last_buy, self.last_sell, self.lowest_price, self.highest_price, self.base_price, self.avg_tmp, self.max_position, self.t_start)
+                            to_log(self.name, _env)
                             to_log(self.name, 'condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.last_buy * (1 - self.add_rate * np.log(1 + self.step))))
 
                             res_short = trade.open_order(self.symbol, 'SELL', sum(self.sell_qty), price=None, positionSide='LONG')
                             if not 'orderId' in res_short:
-                                to_log(self.name, '%s/%s 平多失败\t%s\t%s' % (self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
+                                to_log(self.name, '%s/%s 平多失败 \t %s \t %s' % (self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
                                 continue
+
                             self.win += sum(self.sell_qty) * (self.present_price - self.avg) * (1 - 4e-4)
                             self.step = 0
                             self.avg = 0.0
@@ -380,6 +419,7 @@ class GridStrategy:
                             self.highest_price = 0.0
                             self.base_price = 0.0
                             self.avg_tmp = 0.0
+
                             to_log(self.name, '%s/%s 清仓, 已实现盈利=%.2f（最大持有量=%s, %.1f小时）\t%s' % (self.symbol, self.side, self.win, self.max_position, (time.time() - self.t_start) / 3600, PublicModels.changeTime(time.time())))
 
                         else:
@@ -387,7 +427,9 @@ class GridStrategy:
                                 if self.base_price > self.avg:
                                     self.avg = self.avg_tmp
                                 self.avg_tmp = (self.avg * sum(self.sell_qty) / self.sell_qty[0] + self.present_price) / (sum(self.sell_qty) / self.sell_qty[0] + 1)
-                                to_log(self.name, '{}/{} 浮盈加仓'.format(self.symbol, self.side))
+                                to_log(self.name, '{}/{} 浮盈加仓 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
+                                _env = '"key": {}, "secret": {}, "name": {}, "step": {}, "symbol": {}, "side": {}, "avg": {}, "buy_qty": {}, "sell_qty": {}, "win": {}, "last_buy": {}, "last_sell": {}, "lowest_price": {}, "highest_price": {}, "base_price": {}, "avg_tmp": {}, "max_position": {}, "t_start": {}"'.format(self.key, self.secret, self.name, self.step, self.symbol, self.side, self.avg, self.buy_qty, self.sell_qty, self.win, self.last_buy, self.last_sell, self.lowest_price, self.highest_price, self.base_price, self.avg_tmp, self.max_position, self.t_start)
+                                to_log(self.name, _env)
                                 to_log(self.name, 'condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.last_buy * (1 - self.add_rate * np.log(1 + self.step))))
 
                                 res_long = trade.open_order(self.symbol, 'BUY', self.sell_qty[0], price=None, positionSide='LONG')
@@ -397,6 +439,7 @@ class GridStrategy:
                                     else:
                                         to_log(self.name, '%s/%s 加仓失败 \t %s \t %s'%(self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
                                     continue
+
                                 self.base_price *= 1 + self.profit
                                 self.sell_qty.append(self.sell_qty[0])
                                 self.win -= self.sell_qty[-1] * self.present_price * 4e-4
@@ -404,19 +447,23 @@ class GridStrategy:
                     ## 止盈最近的一次开仓
                     ## 判断已经开单且 当前价格 >= 开单价格 * (1 + 0.003)
                     elif self.step > 1 and self.present_price >= self.avg * (1 + 0.003):
-                        to_log(self.name, '{}/{} 平最近一次加仓'.format(self.symbol, self.side))
+                        to_log(self.name, '{}/{} 平最近一次加仓 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
+                        _env = '"key": {}, "secret": {}, "name": {}, "step": {}, "symbol": {}, "side": {}, "avg": {}, "buy_qty": {}, "sell_qty": {}, "win": {}, "last_buy": {}, "last_sell": {}, "lowest_price": {}, "highest_price": {}, "base_price": {}, "avg_tmp": {}, "max_position": {}, "t_start": {}"'.format(self.key, self.secret, self.name, self.step, self.symbol, self.side, self.avg, self.buy_qty, self.sell_qty, self.win, self.last_buy, self.last_sell, self.lowest_price, self.highest_price, self.base_price, self.avg_tmp, self.max_position, self.t_start)
+                        to_log(self.name, _env)
                         to_log(self.name, 'condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.avg * (1 + 0.003)))
 
                         res_short = trade.open_order(self.symbol, 'SELL', self.sell_qty[-1], price=None, positionSide='LONG')
                         if not 'orderId' in res_short:
                             to_log(self.name, '%s/%s 平多失败 \t %s \t %s' % (self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
                             continue
+
                         nums = self.sell_qty.pop()
                         self.win += nums * (self.present_price - self.avg) * (1 - 4e-4)
                         self.step = 1
                         self.lowest_price = 100000.0
                         self.base_price = self.avg
                         self.last_buy = self.avg
+
                         to_log(self.name, '%s/%s 剩余仓位成本=%.1f, 均价=%.3f, 浮盈=%.2f, 已实现盈利=%.2f（最大持有量=%s, %.1f小时）\t %s' % (
                             self.symbol, self.side, sum(self.sell_qty) * self.avg, self.avg, sum(self.sell_qty) * (self.present_price - self.avg), self.win, self.max_position, (time.time() - self.t_start) / 3600, PublicModels.changeTime(time.time())))
 
