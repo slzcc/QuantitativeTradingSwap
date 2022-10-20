@@ -19,6 +19,7 @@ import logging
 import time
 import re
 import types
+import os
 
 # 创建日志器对象
 ######################################## Logging __name__ #######################################
@@ -44,6 +45,10 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 console_handler.setFormatter(formatter)
 file_handler.setFormatter(formatter)
 
+# 如果日志目录不存在进行创建
+if not os.path.exists('logs'):
+    os.mkdir('logs')
+            
 # request 异常方法处理, 解决 requests 异常错误直接退出的问题
 def PublicRequests(request={"url": "", "params": {}, "header": {}, "model": "GET", "timeout": 3, "verify": True, "proxies": {}}, recursive_abnormal={"recursive": 3, "count": 0, "alert_count": 3}):
     """

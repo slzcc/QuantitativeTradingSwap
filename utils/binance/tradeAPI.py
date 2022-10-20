@@ -16,7 +16,7 @@ import json
 import hmac
 import hashlib
 from urllib.parse import urlencode
-from conf.settings import *
+from conf.settings import binance_recvWindow, FUTURE_URL, PROXIES_DEFAULT_DATA
 from utils import public as PublicModels
 
 class TradeApi:
@@ -39,7 +39,7 @@ class TradeApi:
         query = self._sign(self.secret, params)
         header = {"X-MBX-APIKEY": self.api}
         return PublicModels.PublicRequests(request={"model": "POST", "url": path, "header": header, "params": query, "timeout": 5, "verify": True, "proxies": PROXIES_DEFAULT_DATA}, recursive_abnormal={"recursive": 10, "count": 0, "alert_count": 10}).json()
-        
+
     def set_leverage(self, symbol, leverage):
         ''' 调整开仓杠杆'''
         path = "{}/fapi/v1/leverage".format(FUTURE_URL)
@@ -52,7 +52,7 @@ class TradeApi:
         '''账户余额'''
         path = "{}/fapi/v2/balance".format(FUTURE_URL)
         params = {"recvWindow": binance_recvWindow}
-        query = self._sign(self.secret, params)
+        query = urlencode(self._sign(self.secret, params))
         url = "%s?%s" % (path, query)
         header = {"X-MBX-APIKEY": self.api}
         return PublicModels.PublicRequests(request={"model": "GET", "url": url, "header": header, "timeout": 5, "verify": True, "proxies": PROXIES_DEFAULT_DATA}, recursive_abnormal={"recursive": 10, "count": 0, "alert_count": 10}).json()
@@ -61,7 +61,7 @@ class TradeApi:
         '''账户信息'''
         path = "{}/fapi/v2/account".format(FUTURE_URL)
         params = {"recvWindow": binance_recvWindow}
-        query = self._sign(self.secret, params)
+        query = urlencode(self._sign(self.secret, params))
         url = "%s?%s" % (path, query)
         header = {"X-MBX-APIKEY": self.api}
         return PublicModels.PublicRequests(request={"model": "GET", "url": url, "header": header, "timeout": 5, "verify": True, "proxies": PROXIES_DEFAULT_DATA}, recursive_abnormal={"recursive": 10, "count": 0, "alert_count": 10}).json()
@@ -80,12 +80,11 @@ class TradeApi:
         else:
             path = "{}/fapi/v1/income".format(FUTURE_URL)
         params = {"recvWindow": binance_recvWindow}
-        query = self._sign(self.secret, params)
+        query = urlencode(self._sign(self.secret, params))
         url = "%s?%s" % (path, query)
         header = {"X-MBX-APIKEY": self.api}
         return PublicModels.PublicRequests(request={"model": "GET", "url": url, "header": header, "timeout": 5, "verify": True, "proxies": PROXIES_DEFAULT_DATA}, recursive_abnormal={"recursive": 10, "count": 0, "alert_count": 10}).json()
 
-    
     def get_positionrisk(self):
         '''用户持仓风险
         [
@@ -109,7 +108,7 @@ class TradeApi:
         path = "{}/fapi/v2/positionRisk".format(FUTURE_URL)
         try:
             params = {"recvWindow": binance_recvWindow}
-            query = self._sign(self.secret, params)
+            query = urlencode(self._sign(self.secret, params))
             url = "%s?%s" % (path, query)
             header = {"X-MBX-APIKEY": self.api}
             return list(filter(lambda x:float(x['entryPrice']) > 0, PublicModels.PublicRequests(request={"model": "GET", "url": url, "header": header, "timeout": 5, "verify": True, "proxies": PROXIES_DEFAULT_DATA}, recursive_abnormal={"recursive": 10, "count": 0, "alert_count": 10}).json()))
@@ -117,12 +116,16 @@ class TradeApi:
         except Exception as e:
             print(e)
             return []
-        
-    def get_history_order(self, symbol, start, end):
+
+    def get_history_order(self, symbol=None, start=None, end=None):
         '''成交历史'''
         path = "{}/fapi/v1/userTrades".format(FUTURE_URL)
-        params = {'symbol': symbol, 'startTime': start,'endTime': end, "recvWindow": binance_recvWindow}
-        query = self._sign(self.secret, params)
+        params = {"recvWindow": binance_recvWindow}
+        params["symbol"] = symbol if symbol else ""
+        if start and end:
+            params["start"] = start
+            params["end"] = end
+        query = urlencode(self._sign(self.secret, params))
         url = "%s?%s" % (path, query)
         header = {"X-MBX-APIKEY": self.api}
         return PublicModels.PublicRequests(request={"model": "GET", "url": url, "header": header, "timeout": 5, "verify": True, "proxies": PROXIES_DEFAULT_DATA}, recursive_abnormal={"recursive": 10, "count": 0, "alert_count": 10}).json()
@@ -169,7 +172,7 @@ class TradeApi:
         '''查询订单'''
         path = "{}/fapi/v1/order".format(FUTURE_URL)
         params = {"symbol": symbol, "orderId": orderId, "recvWindow": binance_recvWindow}
-        query = self._sign(self.secret, params)
+        query = urlencode(self._sign(self.secret, params))
         url = "%s?%s" % (path, query)
         header = {"X-MBX-APIKEY": self.api}
         return PublicModels.PublicRequests(request={"model": "GET", "url": url, "header": header, "timeout": 5, "verify": True, "proxies": PROXIES_DEFAULT_DATA}, recursive_abnormal={"recursive": 10, "count": 0, "alert_count": 10}).json()
@@ -177,13 +180,12 @@ class TradeApi:
     def cancel_one_order(self, symbol, orderId):
         '''撤销某订单'''
         path = "{}/fapi/v1/order".format(FUTURE_URL)
-        params = {"symbol": symbol,"orderId":orderId}
+        params = {"symbol": symbol,"orderId": orderId}
         params.update({"recvWindow": 5000})
         query = self._sign(params)
         url = "%s" % (path)
         header = {"X-MBX-APIKEY": self.api}
         return PublicModels.PublicRequests(request={"model": "DELETE", "url": url, "header": header, "params": query, "timeout": 5, "verify": True, "proxies": PROXIES_DEFAULT_DATA}, recursive_abnormal={"recursive": 10, "count": 0, "alert_count": 10}).json()
-
 
     def cancel_orders(self,symbol):
         '''撤销全部订单'''
@@ -194,7 +196,6 @@ class TradeApi:
         url = "%s" % (path)
         header = {"X-MBX-APIKEY": self.api}
         return PublicModels.PublicRequests(request={"model": "DELETE", "url": url, "header": header, "params": query, "timeout": 5, "verify": True, "proxies": PROXIES_DEFAULT_DATA}, recursive_abnormal={"recursive": 10, "count": 0, "alert_count": 10}).json()
-
 
     def _order(self, symbol, quantity, side, price, positionSide):
         params = {}
@@ -218,10 +219,10 @@ class TradeApi:
         return params
 
     def _sign(self, secret="", params={}):
+        '''获取认证 Token'''
         data = params.copy()
         ts = int(1000 * time.time())
-        # data.update({"timestamp": ts})
-        data["timestamp"] = ts
+        data.update({"timestamp": ts})
         h = urlencode(data)
         b = bytearray()
         b.extend(secret.encode())

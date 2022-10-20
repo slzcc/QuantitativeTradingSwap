@@ -60,7 +60,6 @@ def command_line_args(args):
         raise ValueError('缺少用户凭证 secret!')
     return args
 
-
 def compare_items(items):
     # caution: if v is NULL, may need to process
     (k, v) = items
