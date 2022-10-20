@@ -126,7 +126,7 @@ class GridStrategy:
                     # 起始位置 0, 且没有开仓
                     if self.step == 0:
                         # 判断当前价格 小于/等于 前三根 k 线的最大值
-                        sell_condition1 = self.present_price <= max(price1m_high[:5])
+                        sell_condition1 = self.present_price <= max(price1m_low[:5])
                         # 判断当前价格 大于/等于 后四根 k 线的最小值
                         sell_condition2 = self.present_price >= min(price1m_high[-5:-1])
 
@@ -335,7 +335,7 @@ class GridStrategy:
                         buy_condition1 = self.present_price <= min(price1m_high[10:15])
 
                         # 判断当前价格
-                        if buy_condition:
+                        if buy_condition1:
                             self.logger.info('{}/{} 开多 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
                             # 下单开多
                             res_long = trade.open_order(self.symbol, 'BUY', self.position_size, price=self.present_price, positionSide='LONG').json()
