@@ -125,10 +125,10 @@ class GridStrategy:
                         self.symbol, self.side, self.present_price, sum(self.buy_qty), len(self.buy_qty), self.step, PublicModels.changeTime(time.time())))
                     # 起始位置 0, 且没有开仓
                     if self.step == 0:
-                        # 判断当前价格 小于/等于 后三根 k 线的最小值
-                        sell_condition1 = self.present_price <= min(price1m_low[-4:-1])
-                        # 判断当前价格 大于/等于 前四根 k 线的最大值
-                        sell_condition2 = self.present_price >= max(price1m_high[:5])
+                        # 判断当前价格 小于/等于 前三根 k 线的最大值
+                        sell_condition1 = self.present_price <= max(price1m_high[:5])
+                        # 判断当前价格 大于/等于 后四根 k 线的最小值
+                        sell_condition2 = self.present_price >= min(price1m_high[-5:-1])
 
                         # 判断数据是否为空
                         if sell_condition1 or sell_condition2:
@@ -330,10 +330,10 @@ class GridStrategy:
                         self.symbol, self.side, self.present_price, sum(self.sell_qty), len(self.sell_qty), self.step, PublicModels.changeTime(time.time())))
                     # 当起始位为 0, 则没有任何开单
                     if self.step == 0:
-                        # 判断当前价格 小于/等于 前三根 k 线的最大值
-                        buy_condition1 = self.present_price <= max(price1m_high[:5])
-                        # 判断当前价格 大于/等于 后四根 k 线的最小值
-                        buy_condition2 = self.present_price >= min(price1m_high[-5:-1])
+                        # 判断当前价格 小于/等于 后三根 k 线的最小值
+                        buy_condition1 = self.present_price <= min(price1m_low[-4:-1])
+                        # 判断当前价格 大于/等于 前四根 k 线的最大值
+                        buy_condition2 = self.present_price >= max(price1m_high[:5])
                         
                         # 判断当前价格
                         if buy_condition1 or buy_condition2:
