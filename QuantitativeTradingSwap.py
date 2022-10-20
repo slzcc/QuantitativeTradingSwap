@@ -95,22 +95,22 @@ class GridStrategy:
         # 获取一个 Binance API 对象
         trade = tradeAPI.TradeApi(self.key, self.secret)
         # 更改持仓方式，默认单向
-        checkAccount = trade.change_side(False)
+        checkAccount = trade.change_side(False).json()
         if "code" in checkAccount.keys():
             if checkAccount["code"] != -4059:
                 raise AssertionError("账户凭证存在异常, 返回内容 {}, 请检查后继续!".format(checkAccount))
 
         # 变换逐全仓, 默认逐仓
-        trade.change_margintype(self.symbol, isolated=False)
+        trade.change_margintype(self.symbol, isolated=False).json()
         # 调整开仓杠杆
-        trade.set_leverage(self.symbol, self.position_times)
+        trade.set_leverage(self.symbol, self.position_times).json()
         # 设置当前启动时间
         t_start = time.time()
         self.logger.info('{}/{} U本位开始运行 \t {} \t #################'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
         while True:
             try:
                 # 获取 1m 时间的 k 线
-                klines = get_history_k(typ='futures', coin=self.symbol, T='1m')
+                klines = get_history_k(typ='futures', coin=self.symbol, T='1m').json()
                 # 获取 k 线中最低的价格(取每个 list 中第 3 个位置数据)
                 price1m_low = list(map(lambda x: float(x[3]), klines))
                 # 获取 k 线中最高的价格(取每个 list 中第 2 个位置数据)
@@ -134,7 +134,7 @@ class GridStrategy:
                         if sell_condition1 or sell_condition2:
                             self.logger.info('{}/{} 下单开空 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
                             # 下单开空, 市价开单
-                            res_short = trade.open_order(self.symbol, 'SELL', self.position_size, price=self.present_price, positionSide='SHORT')
+                            res_short = trade.open_order(self.symbol, 'SELL', self.position_size, price=self.present_price, positionSide='SHORT').json()
                             # 判断下单是否成功
                             if not 'orderId' in res_short:
                                 self.logger.info('{}/{} 开空失败 \t {} \t {}'.format(self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
@@ -172,7 +172,7 @@ class GridStrategy:
                             self.logger.info('condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.last_sell * (1 + self.add_rate * np.log(1 - self.step))))
 
                             # 下单平空(市价平所有仓位)
-                            res_long = trade.open_order(self.symbol, 'BUY', sum(self.buy_qty), price=self.present_price, positionSide='SHORT')
+                            res_long = trade.open_order(self.symbol, 'BUY', sum(self.buy_qty), price=self.present_price, positionSide='SHORT').json()
                             # 判断下单平空
                             if not 'orderId' in res_long:
                                 self.logger.info('{}/{} 平空失败 \t {} \t {}'.format(self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
@@ -207,7 +207,7 @@ class GridStrategy:
                                 self.logger.info(_env)
                                 self.logger.info('condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.last_sell * (1 + self.add_rate * np.log(1 - self.step))))
                                 # 下单加仓
-                                res_short = trade.open_order(self.symbol, 'SELL', sum(self.buy_qty), price=self.present_price, positionSide='SHORT')
+                                res_short = trade.open_order(self.symbol, 'SELL', sum(self.buy_qty), price=self.present_price, positionSide='SHORT').json()
                                 # 判断下单加仓
                                 if not 'orderId' in res_short:
                                     if res_short['msg'] == 'Margin is insufficient.':
@@ -235,8 +235,8 @@ class GridStrategy:
                             self.logger.info(_env)
                             self.logger.info('condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.last_sell * (1 + self.add_rate * np.log(1 - self.step))))
 
-                            res_long = trade.open_order(self.symbol, 'BUY', sum(self.buy_qty[-2:]), price=round(self.avg * (1 - 0.002), self.price_precision), positionSide='SHORT')
-                            res_long = trade.open_order(self.symbol, 'BUY', sum(self.buy_qty[:-2]), price=round(self.avg * (1 - self.profit), self.price_precision), positionSide='SHORT')
+                            res_long = trade.open_order(self.symbol, 'BUY', sum(self.buy_qty[-2:]), price=round(self.avg * (1 - 0.002), self.price_precision), positionSide='SHORT').json()
+                            res_long = trade.open_order(self.symbol, 'BUY', sum(self.buy_qty[:-2]), price=round(self.avg * (1 - self.profit), self.price_precision), positionSide='SHORT').json()
 
                             self.step = 0
                             self.avg = 0.0
@@ -256,7 +256,7 @@ class GridStrategy:
                                 self.logger.info(_env)
                                 self.logger.info('condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.last_sell * (1 + self.add_rate * np.log(1 - self.step))))
 
-                                res_long = trade.open_order(self.symbol, 'BUY', sum(self.buy_qty), price=self.present_price, positionSide='SHORT')
+                                res_long = trade.open_order(self.symbol, 'BUY', sum(self.buy_qty), price=self.present_price, positionSide='SHORT').json()
                                 if not 'orderId' in res_long:
                                     self.logger.info('%s/%s 平空失败 \t %s \t %s' % (self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
                                     continue
@@ -284,7 +284,7 @@ class GridStrategy:
                                     self.logger.info(_env)
                                     self.logger.info('condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.last_sell * (1 + self.add_rate * np.log(1 - self.step))))
 
-                                    res_short = trade.open_order(self.symbol, 'SELL', self.buy_qty[0], price=self.present_price, positionSide='SHORT')
+                                    res_short = trade.open_order(self.symbol, 'SELL', self.buy_qty[0], price=self.present_price, positionSide='SHORT').json()
                                     if not 'orderId' in res_short:
                                         if res_short['msg'] == 'Margin is insufficient.':
                                             self.logger.info('%s/%s 可用金不足 \t %s \t %s' % (self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
@@ -307,7 +307,7 @@ class GridStrategy:
                             self.logger.info('condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.avg * (1 - 0.003)))
 
                             # 下单平仓
-                            res_long = trade.open_order(self.symbol, 'BUY', self.buy_qty[-1], price=self.present_price, positionSide='SHORT')
+                            res_long = trade.open_order(self.symbol, 'BUY', self.buy_qty[-1], price=self.present_price, positionSide='SHORT').json()
                             # 判断下单平仓
                             if not 'orderId' in res_long:
                                 self.logger.info('{}/{} 平空失败 \t {} \t {}'.format(self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
@@ -338,7 +338,7 @@ class GridStrategy:
                         if buy_condition1 or buy_condition2:
                             self.logger.info('{}/{} 开多 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
                             # 下单开多
-                            res_long = trade.open_order(self.symbol, 'BUY', self.position_size, price=self.present_price, positionSide='LONG')
+                            res_long = trade.open_order(self.symbol, 'BUY', self.position_size, price=self.present_price, positionSide='LONG').json()
                             # 判断是否下单成功
                             if not 'orderId' in res_long:
                                 self.logger.info('{}/{} 开多失败 \t {} \t {}'.format(self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
@@ -365,7 +365,7 @@ class GridStrategy:
                             self.logger.info(_env)
                             self.logger.info('condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.last_buy * (1 - self.add_rate * np.log(1 + self.step))))
 
-                            res_short = trade.open_order(self.symbol, 'SELL', sum(self.sell_qty), price=self.present_price, positionSide='LONG')
+                            res_short = trade.open_order(self.symbol, 'SELL', sum(self.sell_qty), price=self.present_price, positionSide='LONG').json()
                             if not 'orderId' in res_short:
                                 self.logger.info('%s/%s 平多失败 \t %s \t %s' % (self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
                                 continue
@@ -388,7 +388,7 @@ class GridStrategy:
                                 self.logger.info(_env)
                                 self.logger.info('condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.last_buy * (1 - self.add_rate * np.log(1 + self.step))))
 
-                                res_long = trade.open_order(self.symbol, 'BUY', sum(self.sell_qty), price=self.present_price, positionSide='LONG')
+                                res_long = trade.open_order(self.symbol, 'BUY', sum(self.sell_qty), price=self.present_price, positionSide='LONG').json()
                                 if not 'orderId' in res_long:
                                     if res_long['msg'] == 'Margin is insufficient.':
                                         self.logger.info('%s/%s 可用金不足 \t %s \t %s' % (self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
@@ -411,8 +411,8 @@ class GridStrategy:
                             self.logger.info(_env)
                             self.logger.info('condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.last_buy * (1 - self.add_rate * np.log(1 + self.step))))
 
-                            trade.open_order(self.symbol, 'SELL', sum(self.sell_qty[-2:]), price=round(self.avg * (1 + 0.002), self.price_precision), positionSide='LONG')
-                            trade.open_order(self.symbol, 'SELL', sum(self.sell_qty[:-2]), price=round(self.avg * (1 + self.profit), self.price_precision), positionSide='LONG')
+                            trade.open_order(self.symbol, 'SELL', sum(self.sell_qty[-2:]), price=round(self.avg * (1 + 0.002), self.price_precision), positionSide='LONG').json()
+                            trade.open_order(self.symbol, 'SELL', sum(self.sell_qty[:-2]), price=round(self.avg * (1 + self.profit), self.price_precision), positionSide='LONG').json()
 
                             self.step = 0
                             self.avg = 0.0
@@ -432,7 +432,7 @@ class GridStrategy:
                                 self.logger.info(_env)
                                 self.logger.info('condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.last_buy * (1 - self.add_rate * np.log(1 + self.step))))
 
-                                res_short = trade.open_order(self.symbol, 'SELL', sum(self.sell_qty), price=self.present_price, positionSide='LONG')
+                                res_short = trade.open_order(self.symbol, 'SELL', sum(self.sell_qty), price=self.present_price, positionSide='LONG').json()
                                 if not 'orderId' in res_short:
                                     self.logger.info('%s/%s 平多失败 \t %s \t %s' % (self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
                                     continue
@@ -459,7 +459,7 @@ class GridStrategy:
                                     self.logger.info(_env)
                                     self.logger.info('condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.last_buy * (1 - self.add_rate * np.log(1 + self.step))))
 
-                                    res_long = trade.open_order(self.symbol, 'BUY', self.sell_qty[0], price=self.present_price, positionSide='LONG')
+                                    res_long = trade.open_order(self.symbol, 'BUY', self.sell_qty[0], price=self.present_price, positionSide='LONG').json()
                                     if not 'orderId' in res_long:
                                         if res_long['msg'] == 'Margin is insufficient.':
                                             self.logger.info('%s/%s 可用金不足 \t %s \t %s' % (self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
@@ -479,7 +479,7 @@ class GridStrategy:
                             self.logger.info(_env)
                             self.logger.info('condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.avg * (1 + 0.003)))
 
-                            res_short = trade.open_order(self.symbol, 'SELL', self.sell_qty[-1], price=self.present_price, positionSide='LONG')
+                            res_short = trade.open_order(self.symbol, 'SELL', self.sell_qty[-1], price=self.present_price, positionSide='LONG').json()
                             if not 'orderId' in res_short:
                                 self.logger.info('%s/%s 平多失败 \t %s \t %s' % (self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
                                 continue
