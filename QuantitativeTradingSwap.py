@@ -5,7 +5,9 @@ import time
 import json
 import sys
 import logging
+import os
 import numpy as np
+
 from utils.binance import tradeAPI
 from utils.binance.getKlineData import *
 from conf.settings import *
@@ -13,10 +15,6 @@ from utils.public import *
 from utils import public as PublicModels
 from utils.QuantitativeTradingSwapUtils import command_line_args
 from logging.handlers import TimedRotatingFileHandler
-
-def to_log(symbol, msg):
-    with open('logs/{}.log'.format(symbol),'a+') as f:
-        f.write(msg + '\n')
 
 class GridStrategy:
     def __init__(self, symbol, key, secret):
@@ -74,6 +72,10 @@ class GridStrategy:
         console_handler.setFormatter(formatter)
         file_handler.setFormatter(formatter)
 
+        # 如果日志目录不存在进行创建
+        if not os.path.exists('logs'):
+            os.mkdir('logs')
+
     def read_conf(self, symbol):
         """
         获取开仓币种初始参数
@@ -93,172 +95,149 @@ class GridStrategy:
         # 获取一个 Binance API 对象
         trade = tradeAPI.TradeApi(self.key, self.secret)
         # 更改持仓方式，默认单向
-        checkAccount = trade.change_side(False)
+        checkAccount = trade.change_side(False).json()
         if "code" in checkAccount.keys():
             if checkAccount["code"] != -4059:
                 raise AssertionError("账户凭证存在异常, 返回内容 {}, 请检查后继续!".format(checkAccount))
 
         # 变换逐全仓, 默认逐仓
-        trade.change_margintype(self.symbol, isolated=False)
+        trade.change_margintype(self.symbol, isolated=False).json()
         # 调整开仓杠杆
-        trade.set_leverage(self.symbol, self.position_times)
+        trade.set_leverage(self.symbol, self.position_times).json()
         # 设置当前启动时间
         t_start = time.time()
         self.logger.info('{}/{} U本位开始运行 \t {} \t #################'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
         while True:
-            # 获取 1m 时间的 k 线
-            klines = get_history_k(typ='futures', coin=self.symbol, T='1m')
-            # 获取 k 线中最低的价格(取每个 list 中第 3 个位置数据)
-            price1m_low = list(map(lambda x: float(x[3]), klines))
-            # 获取 k 线中最高的价格(取每个 list 中第 2 个位置数据)
-            price1m_high = list(map(lambda x: float(x[2]), klines))
-            # 获取 k 线中现在的价格
-            self.present_price = float(klines[-1][4])
-            # 记录最小购买单价
-            self.position_size = self.min_qty
-            # 如果策略为开 空 时
-            if self.side != '多':
-                self.logger.info('{}/{} U本位合约正在运行, 当前价格 {} , 已购买币种总数 {} , 已经下单总次数 {} , 锚点位置 {} \t {}'.format(
-                    self.symbol, self.side, self.present_price, sum(self.buy_qty), len(self.buy_qty), self.step, PublicModels.changeTime(time.time())))
-                # 起始位置 0, 且没有开仓
-                if self.step == 0:
-                    # 判断当前价格 小于/等于 后三根 k 线的最小值
-                    sell_condition1 = self.present_price <= min(price1m_low[-4:-1])
-                    # 判断当前价格 大于/等于 前四根 k 线的最大值
-                    sell_condition2 = self.present_price >= max(price1m_high[:5])
+            try:
+                # 获取 1m 时间的 k 线
+                klines = get_history_k(typ='futures', coin=self.symbol, T='1m').json()
+                # 获取 k 线中最低的价格(取每个 list 中第 3 个位置数据)
+                price1m_low = list(map(lambda x: float(x[3]), klines))
+                # 获取 k 线中最高的价格(取每个 list 中第 2 个位置数据)
+                price1m_high = list(map(lambda x: float(x[2]), klines))
+                # 获取 k 线中现在的价格
+                self.present_price = float(klines[-1][4])
+                # 记录最小购买单价
+                self.position_size = self.min_qty
+                # 如果策略为开 空 时
+                if self.side != '多':
+                    self.logger.info('{}/{} U本位合约正在运行, 当前价格 {} , 已购买币种总数 {} , 已经下单总次数 {} , 锚点位置 {} \t {}'.format(
+                        self.symbol, self.side, self.present_price, sum(self.buy_qty), len(self.buy_qty), self.step, PublicModels.changeTime(time.time())))
+                    # 起始位置 0, 且没有开仓
+                    if self.step == 0:
+                        # 判断当前价格 小于/等于 后三根 k 线的最小值
+                        sell_condition1 = self.present_price <= min(price1m_low[-4:-1])
+                        # 判断当前价格 大于/等于 前四根 k 线的最大值
+                        sell_condition2 = self.present_price >= max(price1m_high[:5])
 
-                    # 判断数据是否为空
-                    if sell_condition1 or sell_condition2:
-                        self.logger.info('{}/{} 下单开空 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
-                        # 下单开空, 市价开单
-                        res_short = trade.open_order(self.symbol, 'SELL', self.position_size, price=self.present_price, positionSide='SHORT')
-                        # 判断下单是否成功
-                        if not 'orderId' in res_short:
-                            self.logger.info('{}/{} 开空失败 \t {} \t {}'.format(self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
-                            continue
-
-                        # 记录开仓价格
-                        self.avg = self.present_price
-                        # 记录起始价格
-                        self.base_price = self.present_price
-                        # 记录出售价格
-                        self.last_sell = self.present_price
-                        # 记录购买数量到 buy_qty 列表中
-                        self.buy_qty.append(self.position_size)
-                        # 锚点计数开空 -1
-                        self.step -= 1
-                        # 科学记数法到十进制 https://calculator.name/scientific-notation-to-decimal
-                        # 4e-4 等于 4/10000
-                        # 记录止损值(值是购买币的数量)
-                        self.win -= self.position_size * self.present_price * 4e-4
-                        # 下单成功
-                        self.logger.info('%s/%s 当前仓位成本=%.1f, 开仓价=%.3f\t%s' % (self.symbol, self.side, sum(self.buy_qty) * self.avg, self.avg, PublicModels.changeTime(time.time())))
-
-                # 当锚点为负数时, 证明已下过单
-                elif self.step < 0:
-                    # 判断是否可以继续下单，返回布尔值
-                    # 开仓总币价 / 每单币价 < 开仓数量
-                    condition = sum(self.buy_qty) / self.min_qty < self.max_add_times
-                    # 判断 仓位 是否需要进行止损(全仓平仓)
-                    ## 判断 亏损 && (是否可以继续开仓) && 当前价格 大于等于 准备出售价格 乘以 (1 + 1.2 * 开仓数量比例值) ep: 19700.0 * (1 + 1.2 * np.log(1 - -1))
-                    ## 主要判断亏损如果超过范围则进行止损平仓（开仓数量到达上限）
-                    if self.if_loss and (not condition) and self.present_price >= self.last_sell * (1 + self.add_rate * np.log(1 - self.step)):
-                        self.logger.info('{}/{} 平空止损 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
-                        _env = '"key": {}, "secret": {}, "name": {}, "step": {}, "symbol": {}, "side": {}, "avg": {}, "buy_qty": {}, "sell_qty": {}, "win": {}, "last_buy": {}, "last_sell": {}, "lowest_price": {}, "highest_price": {}, "base_price": {}, "avg_tmp": {}, "max_position": {}, "t_start": {}"'.format(self.key, self.secret, self.name, self.step, self.symbol, self.side, self.avg, self.buy_qty, self.sell_qty, self.win, self.last_buy, self.last_sell, self.lowest_price, self.highest_price, self.base_price, self.avg_tmp, self.max_position, self.t_start)
-                        self.logger.info(_env)
-                        self.logger.info('condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.last_sell * (1 + self.add_rate * np.log(1 - self.step))))
-
-                        # 下单平空(市价平所有仓位)
-                        res_long = trade.open_order(self.symbol, 'BUY', sum(self.buy_qty), price=self.present_price, positionSide='SHORT')
-                        # 判断下单平空
-                        if not 'orderId' in res_long:
-                            self.logger.info('{}/{} 平空失败 \t {} \t {}'.format(self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
-                            continue
-
-                        # 记录止损值(值是购买U的数量)
-                        self.win += sum(self.buy_qty) * (self.avg - self.present_price) * (1 - 4e-4)
-                        # 锚点 0
-                        self.step = 0
-                        # 均价 0
-                        self.avg = 0.0
-                        # 最新购买 0
-                        self.last_sell = 0.0
-                        # 购买池 0
-                        self.buy_qty = []
-                        # 最小购买值(暂时无用)
-                        self.lowest_price = 100000.0
-                        # 最高价 0
-                        self.highest_price = 0.0
-                        # 基础价格 0
-                        self.base_price = 0.0
-                        # 延迟记录均价变化 0
-                        self.avg_tmp = 0.0
-
-                    ## 如果仓位亏损继续扩大则到达比例后进行加仓
-                    ## 判断是否可以加仓
-                    elif condition and self.present_price >= self.last_sell * (1 + self.add_rate * np.log(1 - self.step)):
-                        self.highest_price = max(self.present_price, self.highest_price)
-                        if self.present_price <= self.highest_price * (1 - (self.highest_price / self.last_sell - 1) / 5):
-                            self.logger.info('{}/{} 加仓 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
-                            _env = '"key": {}, "secret": {}, "name": {}, "step": {}, "symbol": {}, "side": {}, "avg": {}, "buy_qty": {}, "sell_qty": {}, "win": {}, "last_buy": {}, "last_sell": {}, "lowest_price": {}, "highest_price": {}, "base_price": {}, "avg_tmp": {}, "max_position": {}, "t_start": {}"'.format(self.key, self.secret, self.name, self.step, self.symbol, self.side, self.avg, self.buy_qty, self.sell_qty, self.win, self.last_buy, self.last_sell, self.lowest_price, self.highest_price, self.base_price, self.avg_tmp, self.max_position, self.t_start)
-                            self.logger.info(_env)
-                            self.logger.info('condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.last_sell * (1 + self.add_rate * np.log(1 - self.step))))
-                            # 下单加仓
-                            res_short = trade.open_order(self.symbol, 'SELL', sum(self.buy_qty), price=self.present_price, positionSide='SHORT')
-                            # 判断下单加仓
+                        # 判断数据是否为空
+                        if sell_condition1 or sell_condition2:
+                            self.logger.info('{}/{} 下单开空 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
+                            # 下单开空, 市价开单
+                            res_short = trade.open_order(self.symbol, 'SELL', self.position_size, price=self.present_price, positionSide='SHORT').json()
+                            # 判断下单是否成功
                             if not 'orderId' in res_short:
-                                if res_short['msg'] == 'Margin is insufficient.':
-                                    self.logger.info('{}/{} 可用金不足 \t {} \t {}'.format(self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
-                                else:
-                                    self.logger.info('{}/{} 加仓失败 \t {} \t {}'.format(self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
+                                self.logger.info('{}/{} 开空失败 \t {} \t {}'.format(self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
                                 continue
 
-                            self.avg = (self.avg + self.present_price) / 2
+                            # 记录开仓价格
+                            self.avg = self.present_price
+                            # 记录起始价格
+                            self.base_price = self.present_price
+                            # 记录出售价格
                             self.last_sell = self.present_price
-                            self.buy_qty.append(sum(self.buy_qty))
+                            # 记录购买数量到 buy_qty 列表中
+                            self.buy_qty.append(self.position_size)
+                            # 锚点计数开空 -1
                             self.step -= 1
-                            self.win -= self.buy_qty[-1] * self.present_price * 4e-4
+                            # 科学记数法到十进制 https://calculator.name/scientific-notation-to-decimal
+                            # 4e-4 等于 4/10000
+                            # 记录止损值(值是购买币的数量)
+                            self.win -= self.position_size * self.present_price * 4e-4
+                            # 下单成功
+                            self.logger.info('%s/%s 当前仓位成本=%.1f, 开仓价=%.3f \t %s' % (self.symbol, self.side, sum(self.buy_qty) * self.avg, self.avg, PublicModels.changeTime(time.time())))
 
-                            self.logger.info('%s/%s 当前仓位成本=%.1f, 均价=%.3f, 浮亏=%.2f, 已实现盈利=%.2f（最大持有量=%s,%.1f小时）\t%s' % (
-                                self.symbol, self.side, sum(self.buy_qty) * self.avg, self.avg, sum(self.buy_qty) * (self.avg - self.present_price), self.win,
-                                self.max_position, (time.time() - self.t_start) / 3600, PublicModels.changeTime(time.time())))
-
-                    ## 如果仓位盈利且到达阀值后进行止盈平仓
-                    ## 判断 not condition 能继续开仓且 当前最新价格 >= 购买价格 * (1 + 加减仓百分比阀值 * 下单数量的自然对数)
-                    elif (not condition) and self.present_price >= self.last_sell * (1 + self.add_rate * np.log(1 - self.step)):
-                        # 给本轮马丁挂上止盈, 重置重新开始下一轮
-                        self.logger.info('{}/{} 重新开始下一轮 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
-                        _env = '"key": {}, "secret": {}, "name": {}, "step": {}, "symbol": {}, "side": {}, "avg": {}, "buy_qty": {}, "sell_qty": {}, "win": {}, "last_buy": {}, "last_sell": {}, "lowest_price": {}, "highest_price": {}, "base_price": {}, "avg_tmp": {}, "max_position": {}, "t_start": {}"'.format(self.key, self.secret, self.name, self.step, self.symbol, self.side, self.avg, self.buy_qty, self.sell_qty, self.win, self.last_buy, self.last_sell, self.lowest_price, self.highest_price, self.base_price, self.avg_tmp, self.max_position, self.t_start)
-                        self.logger.info(_env)
-                        self.logger.info('condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.last_sell * (1 + self.add_rate * np.log(1 - self.step))))
-
-                        res_long = trade.open_order(self.symbol, 'BUY', sum(self.buy_qty[-2:]), price=round(self.avg * (1 - 0.002), self.price_precision), positionSide='SHORT')
-                        res_long = trade.open_order(self.symbol, 'BUY', sum(self.buy_qty[:-2]), price=round(self.avg * (1 - self.profit), self.price_precision), positionSide='SHORT')
-
-                        self.step = 0
-                        self.avg = 0.0
-                        self.last_sell = 0.0
-                        self.buy_qty = []
-                        self.lowest_price = 100000.0
-                        self.highest_price = 0.0
-                        self.base_price = 0.0
-                        self.avg_tmp = 0.0
-
-                    # 判断 第一次开仓后 && (当前价格 小于等于 购买价格 * (1 - 0.002)) && 最低价格 < 100000
-                    elif self.step == -1 and (self.present_price <= self.avg * (1 - self.profit) or (self.present_price <= self.avg * (1 - 0.002) and self.lowest_price < 100000)):
-                        self.lowest_price = min(self.present_price, self.lowest_price)
-                        if self.present_price >= self.lowest_price * (1 + (1 - self.lowest_price / self.avg) / 5):
-                            self.logger.info('{}/{} 平空 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
+                    # 当锚点为负数时, 证明已下过单
+                    elif self.step < 0:
+                        # 判断是否可以继续下单，返回布尔值
+                        # 开仓总币价 / 每单币价 < 开仓数量
+                        condition = sum(self.buy_qty) / self.min_qty < self.max_add_times
+                        # 判断 仓位 是否需要进行止损(全仓平仓)
+                        ## 判断 亏损 && (是否可以继续开仓) && 当前价格 大于等于 准备出售价格 乘以 (1 + 1.2 * 开仓数量比例值) ep: 19700.0 * (1 + 1.2 * np.log(1 - -1))
+                        ## 主要判断亏损如果超过范围则进行止损平仓（开仓数量到达上限）
+                        if self.if_loss and (not condition) and self.present_price >= self.last_sell * (1 + self.add_rate * np.log(1 - self.step)):
+                            self.logger.info('{}/{} 平空止损 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
                             _env = '"key": {}, "secret": {}, "name": {}, "step": {}, "symbol": {}, "side": {}, "avg": {}, "buy_qty": {}, "sell_qty": {}, "win": {}, "last_buy": {}, "last_sell": {}, "lowest_price": {}, "highest_price": {}, "base_price": {}, "avg_tmp": {}, "max_position": {}, "t_start": {}"'.format(self.key, self.secret, self.name, self.step, self.symbol, self.side, self.avg, self.buy_qty, self.sell_qty, self.win, self.last_buy, self.last_sell, self.lowest_price, self.highest_price, self.base_price, self.avg_tmp, self.max_position, self.t_start)
                             self.logger.info(_env)
                             self.logger.info('condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.last_sell * (1 + self.add_rate * np.log(1 - self.step))))
 
-                            res_long = trade.open_order(self.symbol, 'BUY', sum(self.buy_qty), price=self.present_price, positionSide='SHORT')
+                            # 下单平空(市价平所有仓位)
+                            res_long = trade.open_order(self.symbol, 'BUY', sum(self.buy_qty), price=self.present_price, positionSide='SHORT').json()
+                            # 判断下单平空
                             if not 'orderId' in res_long:
-                                self.logger.info('%s/%s 平空失败 \t %s \t %s' % (self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
+                                self.logger.info('{}/{} 平空失败 \t {} \t {}'.format(self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
                                 continue
 
+                            # 记录止损值(值是购买U的数量)
                             self.win += sum(self.buy_qty) * (self.avg - self.present_price) * (1 - 4e-4)
+                            # 锚点 0
+                            self.step = 0
+                            # 均价 0
+                            self.avg = 0.0
+                            # 最新购买 0
+                            self.last_sell = 0.0
+                            # 购买池 0
+                            self.buy_qty = []
+                            # 最小购买值(暂时无用)
+                            self.lowest_price = 100000.0
+                            # 最高价 0
+                            self.highest_price = 0.0
+                            # 基础价格 0
+                            self.base_price = 0.0
+                            # 延迟记录均价变化 0
+                            self.avg_tmp = 0.0
+
+                        ## 如果仓位亏损继续扩大则到达比例后进行加仓
+                        ## 判断是否可以加仓
+                        elif condition and self.present_price >= self.last_sell * (1 + self.add_rate * np.log(1 - self.step)):
+                            self.highest_price = max(self.present_price, self.highest_price)
+                            if self.present_price <= self.highest_price * (1 - (self.highest_price / self.last_sell - 1) / 5):
+                                self.logger.info('{}/{} 加仓 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
+                                _env = '"key": {}, "secret": {}, "name": {}, "step": {}, "symbol": {}, "side": {}, "avg": {}, "buy_qty": {}, "sell_qty": {}, "win": {}, "last_buy": {}, "last_sell": {}, "lowest_price": {}, "highest_price": {}, "base_price": {}, "avg_tmp": {}, "max_position": {}, "t_start": {}"'.format(self.key, self.secret, self.name, self.step, self.symbol, self.side, self.avg, self.buy_qty, self.sell_qty, self.win, self.last_buy, self.last_sell, self.lowest_price, self.highest_price, self.base_price, self.avg_tmp, self.max_position, self.t_start)
+                                self.logger.info(_env)
+                                self.logger.info('condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.last_sell * (1 + self.add_rate * np.log(1 - self.step))))
+                                # 下单加仓
+                                res_short = trade.open_order(self.symbol, 'SELL', sum(self.buy_qty), price=self.present_price, positionSide='SHORT').json()
+                                # 判断下单加仓
+                                if not 'orderId' in res_short:
+                                    if res_short['msg'] == 'Margin is insufficient.':
+                                        self.logger.info('{}/{} 可用金不足 \t {} \t {}'.format(self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
+                                    else:
+                                        self.logger.info('{}/{} 加仓失败 \t {} \t {}'.format(self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
+                                    continue
+
+                                self.avg = (self.avg + self.present_price) / 2
+                                self.last_sell = self.present_price
+                                self.buy_qty.append(sum(self.buy_qty))
+                                self.step -= 1
+                                self.win -= self.buy_qty[-1] * self.present_price * 4e-4
+
+                                self.logger.info('%s/%s 当前仓位成本=%.1f, 均价=%.3f, 浮亏=%.2f, 已实现盈利=%.2f（最大持有量=%s, %.1f小时）\t%s' % (
+                                    self.symbol, self.side, sum(self.buy_qty) * self.avg, self.avg, sum(self.buy_qty) * (self.avg - self.present_price), self.win,
+                                    self.max_position, (time.time() - self.t_start) / 3600, PublicModels.changeTime(time.time())))
+
+                        ## 如果仓位盈利且到达阀值后进行止盈平仓
+                        ## 判断 not condition 能继续开仓且 当前最新价格 >= 购买价格 * (1 + 加减仓百分比阀值 * 下单数量的自然对数)
+                        elif (not condition) and self.present_price >= self.last_sell * (1 + self.add_rate * np.log(1 - self.step)):
+                            # 给本轮马丁挂上止盈, 重置重新开始下一轮
+                            self.logger.info('{}/{} 重新开始下一轮 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
+                            _env = '"key": {}, "secret": {}, "name": {}, "step": {}, "symbol": {}, "side": {}, "avg": {}, "buy_qty": {}, "sell_qty": {}, "win": {}, "last_buy": {}, "last_sell": {}, "lowest_price": {}, "highest_price": {}, "base_price": {}, "avg_tmp": {}, "max_position": {}, "t_start": {}"'.format(self.key, self.secret, self.name, self.step, self.symbol, self.side, self.avg, self.buy_qty, self.sell_qty, self.win, self.last_buy, self.last_sell, self.lowest_price, self.highest_price, self.base_price, self.avg_tmp, self.max_position, self.t_start)
+                            self.logger.info(_env)
+                            self.logger.info('condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.last_sell * (1 + self.add_rate * np.log(1 - self.step))))
+
+                            res_long = trade.open_order(self.symbol, 'BUY', sum(self.buy_qty[-2:]), price=round(self.avg * (1 - 0.002), self.price_precision), positionSide='SHORT').json()
+                            res_long = trade.open_order(self.symbol, 'BUY', sum(self.buy_qty[:-2]), price=round(self.avg * (1 - self.profit), self.price_precision), positionSide='SHORT').json()
+
                             self.step = 0
                             self.avg = 0.0
                             self.last_sell = 0.0
@@ -268,168 +247,125 @@ class GridStrategy:
                             self.base_price = 0.0
                             self.avg_tmp = 0.0
 
-                            self.logger.info('%s/%s 清仓, 已实现盈利=%.2f（最大持有量=%s, %.1f小时）\t %s' % (self.symbol, self.side, self.win, self.max_position, (time.time() - self.t_start) / 3600, PublicModels.changeTime(time.time())))
-
-                        else:
-                            if self.present_price <= self.base_price * (1 - self.profit):
-                                if self.base_price < self.avg:
-                                    self.avg = self.avg_tmp
-                                self.avg_tmp = (self.avg * sum(self.buy_qty) / self.buy_qty[0] + self.present_price) / (sum(self.buy_qty) / self.buy_qty[0] + 1)
-
-                                self.logger.info('{}/{} 浮盈加仓 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
+                        # 判断 第一次开仓后 && (当前价格 小于等于 购买价格 * (1 - 0.002)) && 最低价格 < 100000
+                        elif self.step == -1 and (self.present_price <= self.avg * (1 - self.profit) or (self.present_price <= self.avg * (1 - 0.002) and self.lowest_price < 100000)):
+                            self.lowest_price = min(self.present_price, self.lowest_price)
+                            if self.present_price >= self.lowest_price * (1 + (1 - self.lowest_price / self.avg) / 5):
+                                self.logger.info('{}/{} 平空 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
                                 _env = '"key": {}, "secret": {}, "name": {}, "step": {}, "symbol": {}, "side": {}, "avg": {}, "buy_qty": {}, "sell_qty": {}, "win": {}, "last_buy": {}, "last_sell": {}, "lowest_price": {}, "highest_price": {}, "base_price": {}, "avg_tmp": {}, "max_position": {}, "t_start": {}"'.format(self.key, self.secret, self.name, self.step, self.symbol, self.side, self.avg, self.buy_qty, self.sell_qty, self.win, self.last_buy, self.last_sell, self.lowest_price, self.highest_price, self.base_price, self.avg_tmp, self.max_position, self.t_start)
                                 self.logger.info(_env)
                                 self.logger.info('condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.last_sell * (1 + self.add_rate * np.log(1 - self.step))))
 
-                                res_short = trade.open_order(self.symbol, 'SELL', self.buy_qty[0], price=self.present_price, positionSide='SHORT')
-                                if not 'orderId' in res_short:
-                                    if res_short['msg'] == 'Margin is insufficient.':
-                                        self.logger.info('%s/%s 可用金不足 \t %s \t %s' % (self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
-                                    else:
-                                        self.logger.info('%s/%s 加仓失败 \t %s \t %s'%(self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
+                                res_long = trade.open_order(self.symbol, 'BUY', sum(self.buy_qty), price=self.present_price, positionSide='SHORT').json()
+                                if not 'orderId' in res_long:
+                                    self.logger.info('%s/%s 平空失败 \t %s \t %s' % (self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
                                     continue
 
-                                self.base_price *= 1 - self.profit
-                                self.buy_qty.append(self.buy_qty[0])
-                                self.win -= self.buy_qty[-1] * self.present_price * 4e-4
+                                self.win += sum(self.buy_qty) * (self.avg - self.present_price) * (1 - 4e-4)
+                                self.step = 0
+                                self.avg = 0.0
+                                self.last_sell = 0.0
+                                self.buy_qty = []
+                                self.lowest_price = 100000.0
+                                self.highest_price = 0.0
+                                self.base_price = 0.0
+                                self.avg_tmp = 0.0
 
-                                self.logger.info('%s/%s 当前仓位成本=%.1f, 均价=%.3f, 浮盈=%.2f, 已实现盈利=%.2f（最大持有量=%s, %.1f小时）\t %s' % (
-                                    self.symbol, self.side, sum(self.buy_qty) * self.avg_tmp, self.avg_tmp, sum(self.buy_qty) * (self.present_price - self.avg), self.win,
-                                    self.max_position, (time.time() - self.t_start) / 3600, PublicModels.changeTime(time.time())))
+                                self.logger.info('%s/%s 清仓, 已实现盈利=%.2f（最大持有量=%s, %.1f小时）\t %s' % (self.symbol, self.side, self.win, self.max_position, (time.time() - self.t_start) / 3600, PublicModels.changeTime(time.time())))
 
-                    elif self.step < -1 and self.present_price <= self.avg * (1 - 0.003):
-                        self.logger.info('{}/{} 平最近一次加仓 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
-                        _env = '"key": {}, "secret": {}, "name": {}, "step": {}, "symbol": {}, "side": {}, "avg": {}, "buy_qty": {}, "sell_qty": {}, "win": {}, "last_buy": {}, "last_sell": {}, "lowest_price": {}, "highest_price": {}, "base_price": {}, "avg_tmp": {}, "max_position": {}, "t_start": {}"'.format(self.key, self.secret, self.name, self.step, self.symbol, self.side, self.avg, self.buy_qty, self.sell_qty, self.win, self.last_buy, self.last_sell, self.lowest_price, self.highest_price, self.base_price, self.avg_tmp, self.max_position, self.t_start)
-                        self.logger.info(_env)
-                        self.logger.info('condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.avg * (1 - 0.003)))
+                            else:
+                                if self.present_price <= self.base_price * (1 - self.profit):
+                                    if self.base_price < self.avg:
+                                        self.avg = self.avg_tmp
+                                    self.avg_tmp = (self.avg * sum(self.buy_qty) / self.buy_qty[0] + self.present_price) / (sum(self.buy_qty) / self.buy_qty[0] + 1)
 
-                        # 下单平仓
-                        res_long = trade.open_order(self.symbol, 'BUY', self.buy_qty[-1], price=self.present_price, positionSide='SHORT')
-                        # 判断下单平仓
-                        if not 'orderId' in res_long:
-                            self.logger.info('{}/{} 平空失败 \t {} \t {}'.format(self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
-                            continue
+                                    self.logger.info('{}/{} 浮盈加仓 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
+                                    _env = '"key": {}, "secret": {}, "name": {}, "step": {}, "symbol": {}, "side": {}, "avg": {}, "buy_qty": {}, "sell_qty": {}, "win": {}, "last_buy": {}, "last_sell": {}, "lowest_price": {}, "highest_price": {}, "base_price": {}, "avg_tmp": {}, "max_position": {}, "t_start": {}"'.format(self.key, self.secret, self.name, self.step, self.symbol, self.side, self.avg, self.buy_qty, self.sell_qty, self.win, self.last_buy, self.last_sell, self.lowest_price, self.highest_price, self.base_price, self.avg_tmp, self.max_position, self.t_start)
+                                    self.logger.info(_env)
+                                    self.logger.info('condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.last_sell * (1 + self.add_rate * np.log(1 - self.step))))
 
-                        nums = self.buy_qty.pop()
-                        self.win += nums * (self.avg - self.present_price) * (1-4e-4)
-                        self.step = -1
-                        self.base_price = self.avg
-                        self.highest_price = 0.0
-                        self.last_sell = self.avg
+                                    res_short = trade.open_order(self.symbol, 'SELL', self.buy_qty[0], price=self.present_price, positionSide='SHORT').json()
+                                    if not 'orderId' in res_short:
+                                        if res_short['msg'] == 'Margin is insufficient.':
+                                            self.logger.info('%s/%s 可用金不足 \t %s \t %s' % (self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
+                                        else:
+                                            self.logger.info('%s/%s 加仓失败 \t %s \t %s'%(self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
+                                        continue
 
-                        self.logger.info('%s/%s 剩余仓位成本=%.1f, 均价=%.3f, 浮盈=%.2f, 已实现盈利=%.2f（最大持有量=%s, %.1f小时）\t %s' % (self.symbol, self.side, sum(self.buy_qty)*self.avg, self.avg, sum(self.buy_qty) * (self.avg - self.present_price), self.win, self.max_position, (time.time() - self.t_start) / 3600, PublicModels.changeTime(time.time())))
+                                    self.base_price *= 1 - self.profit
+                                    self.buy_qty.append(self.buy_qty[0])
+                                    self.win -= self.buy_qty[-1] * self.present_price * 4e-4
 
-            # 如果策略为开 多 时
-            else:
-                self.logger.info('{}/{} U本位合约正在运行, 当前价格 {} , 已购买币种总数 {} , 已经下单总次数 {} , 锚点位置 {} \t {}'.format(
-                    self.symbol, self.side, self.present_price, sum(self.sell_qty), len(self.sell_qty), self.step, PublicModels.changeTime(time.time())))
-                # 当起始位为 0, 则没有任何开单
-                if self.step == 0:
-                    # 判断当前价格 大于/等于 后三根 k 线的最大值
-                    buy_condition1 = self.present_price >= max(price1m_high[-4:-1])
-                    # buy_condition1 = self.present_price >= max(price1m_high[0:4])
-                    # 判断当前价格 小于/等于 后四根 k 线的最小值
-                    buy_condition2 = self.present_price <= min(price1m_high[-5:-1])
-                    
-                    # 判断是否存在
-                    if buy_condition1 or buy_condition2:
-                        self.logger.info('{}/{} 开多 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
-                        # 下单开多
-                        res_long = trade.open_order(self.symbol, 'BUY', self.position_size, price=self.present_price, positionSide='LONG')
-                        # 判断是否下单成功
-                        if not 'orderId' in res_long:
-                            self.logger.info('{}/{} 开多失败 \t {} \t {}'.format(self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
-                            continue
+                                    self.logger.info('%s/%s 当前仓位成本=%.1f, 均价=%.3f, 浮盈=%.2f, 已实现盈利=%.2f（最大持有量=%s, %.1f小时）\t %s' % (
+                                        self.symbol, self.side, sum(self.buy_qty) * self.avg_tmp, self.avg_tmp, sum(self.buy_qty) * (self.present_price - self.avg), self.win,
+                                        self.max_position, (time.time() - self.t_start) / 3600, PublicModels.changeTime(time.time())))
 
-                        self.avg = self.present_price
-                        self.base_price = self.avg
-                        self.sell_qty.append(self.position_size)
-                        self.step += 1
-                        self.last_buy = self.present_price
-                        self.win -= self.position_size * self.present_price * 4e-4
-
-                        # 开单成功后
-                        self.logger.info('%s/%s 当前仓位成本=%.1f, 开仓价=%.3f \t %s' % (self.symbol, self.side, sum(self.sell_qty) * self.avg, self.avg, PublicModels.changeTime(time.time())))
-
-                # 判断起始位大于 0, 至少开过一次仓
-                elif self.step > 0:
-                    # 判断当前 开单数量 是否小于 最大可开单值
-                    condition = sum(self.sell_qty) / self.min_qty < self.max_add_times
-                    # 判断 没有亏损 && (not 开单数量上限) && 当前价格 小于等于 最新下单价格 * (1 - 容忍爆仓率 * )
-                    if self.if_loss and (not condition) and self.present_price <= self.last_buy * (1 - self.add_rate * np.log(1 + self.step)):
-                        self.logger.info('{}/{} 平多止损 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
-                        _env = '"key": {}, "secret": {}, "name": {}, "step": {}, "symbol": {}, "side": {}, "avg": {}, "buy_qty": {}, "sell_qty": {}, "win": {}, "last_buy": {}, "last_sell": {}, "lowest_price": {}, "highest_price": {}, "base_price": {}, "avg_tmp": {}, "max_position": {}, "t_start": {}"'.format(self.key, self.secret, self.name, self.step, self.symbol, self.side, self.avg, self.buy_qty, self.sell_qty, self.win, self.last_buy, self.last_sell, self.lowest_price, self.highest_price, self.base_price, self.avg_tmp, self.max_position, self.t_start)
-                        self.logger.info(_env)
-                        self.logger.info('condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.last_buy * (1 - self.add_rate * np.log(1 + self.step))))
-
-                        res_short = trade.open_order(self.symbol, 'SELL', sum(self.sell_qty), price=self.present_price, positionSide='LONG')
-                        if not 'orderId' in res_short:
-                            self.logger.info('%s/%s 平多失败 \t %s \t %s' % (self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
-                            continue
-
-                        self.win += sum(self.sell_qty) * (self.present_price - self.avg) * (1-4e-4)
-                        self.step = 0
-                        self.avg = 0.0
-                        self.last_buy = 0.0
-                        self.sell_qty = []
-                        self.lowest_price = 100000.0
-                        self.highest_price = 0.0
-                        self.base_price = 0.0
-                        self.avg_tmp = 0.0
-
-                    elif condition and self.present_price <= self.last_buy * (1 - self.add_rate * np.log(1 + self.step)):
-                        self.lowest_price = min(self.present_price, self.lowest_price)
-                        if self.present_price >= self.lowest_price * (1 + (1 - self.lowest_price / self.last_buy) / 5):
-                            self.logger.info('{}/{} 加仓 {} {}'.format(self.symbol, self.side, sum(self.sell_qty), PublicModels.changeTime(time.time())))
+                        elif self.step < -1 and self.present_price <= self.avg * (1 - 0.003):
+                            self.logger.info('{}/{} 平最近一次加仓 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
                             _env = '"key": {}, "secret": {}, "name": {}, "step": {}, "symbol": {}, "side": {}, "avg": {}, "buy_qty": {}, "sell_qty": {}, "win": {}, "last_buy": {}, "last_sell": {}, "lowest_price": {}, "highest_price": {}, "base_price": {}, "avg_tmp": {}, "max_position": {}, "t_start": {}"'.format(self.key, self.secret, self.name, self.step, self.symbol, self.side, self.avg, self.buy_qty, self.sell_qty, self.win, self.last_buy, self.last_sell, self.lowest_price, self.highest_price, self.base_price, self.avg_tmp, self.max_position, self.t_start)
                             self.logger.info(_env)
-                            self.logger.info('condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.last_buy * (1 - self.add_rate * np.log(1 + self.step))))
+                            self.logger.info('condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.avg * (1 - 0.003)))
 
-                            res_long = trade.open_order(self.symbol, 'BUY', sum(self.sell_qty), price=self.present_price, positionSide='LONG')
+                            # 下单平仓
+                            res_long = trade.open_order(self.symbol, 'BUY', self.buy_qty[-1], price=self.present_price, positionSide='SHORT').json()
+                            # 判断下单平仓
                             if not 'orderId' in res_long:
-                                if res_long['msg'] == 'Margin is insufficient.':
-                                    self.logger.info('%s/%s 可用金不足 \t %s \t %s' % (self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
-                                else:
-                                    self.logger.info('%s/%s 加仓失败 \t %s \t %s'%(self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
+                                self.logger.info('{}/{} 平空失败 \t {} \t {}'.format(self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
                                 continue
 
-                            self.avg = (self.avg + self.present_price) / 2
-                            self.last_buy = self.present_price
-                            self.sell_qty.append(sum(self.sell_qty))
+                            nums = self.buy_qty.pop()
+                            self.win += nums * (self.avg - self.present_price) * (1 - 4e-4)
+                            self.step = -1
+                            self.base_price = self.avg
+                            self.highest_price = 0.0
+                            self.last_sell = self.avg
+
+                            self.logger.info('%s/%s 剩余仓位成本=%.1f, 均价=%.3f, 浮盈=%.2f, 已实现盈利=%.2f（最大持有量=%s, %.1f小时）\t %s' % (self.symbol, self.side, sum(self.buy_qty)*self.avg, self.avg, sum(self.buy_qty) * (self.avg - self.present_price), self.win, self.max_position, (time.time() - self.t_start) / 3600, PublicModels.changeTime(time.time())))
+
+                # 如果策略为开 多 时
+                else:
+                    self.logger.info('{}/{} U本位合约正在运行, 当前价格 {} , 已购买币种总数 {} , 已经下单总次数 {} , 锚点位置 {} \t {}'.format(
+                        self.symbol, self.side, self.present_price, sum(self.sell_qty), len(self.sell_qty), self.step, PublicModels.changeTime(time.time())))
+                    # 当起始位为 0, 则没有任何开单
+                    if self.step == 0:
+                        # 判断当前价格 大于/等于 后三根 k 线的最大值
+                        buy_condition1 = self.present_price >= max(price1m_high[-4:-1])
+                        # buy_condition1 = self.present_price >= max(price1m_high[0:4])
+                        # 判断当前价格 小于/等于 后四根 k 线的最小值
+                        buy_condition2 = self.present_price <= min(price1m_high[-5:-1])
+                        
+                        # 判断是否存在
+                        if buy_condition1 or buy_condition2:
+                            self.logger.info('{}/{} 开多 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
+                            # 下单开多
+                            res_long = trade.open_order(self.symbol, 'BUY', self.position_size, price=self.present_price, positionSide='LONG').json()
+                            # 判断是否下单成功
+                            if not 'orderId' in res_long:
+                                self.logger.info('{}/{} 开多失败 \t {} \t {}'.format(self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
+                                continue
+
+                            self.avg = self.present_price
+                            self.base_price = self.avg
+                            self.sell_qty.append(self.position_size)
                             self.step += 1
-                            self.win -= self.sell_qty[-1] * self.present_price * 4e-4
+                            self.last_buy = self.present_price
+                            self.win -= self.position_size * self.present_price * 4e-4
 
-                            self.logger.info('%s/%s 当前仓位成本=%.1f, 均价=%.3f, 浮亏=%.2f, 已实现盈利=%.2f（最大持有量=%s, %.1f小时）\t %s' % (self.symbol, self.side, sum(self.sell_qty) * self.avg, self.avg,
-                                    sum(self.sell_qty) * (self.present_price - self.avg), self.win, self.max_position, (time.time() - self.t_start) / 3600, PublicModels.changeTime(time.time())))
+                            # 开单成功后
+                            self.logger.info('%s/%s 当前仓位成本=%.1f, 开仓价=%.3f \t %s' % (self.symbol, self.side, sum(self.sell_qty) * self.avg, self.avg, PublicModels.changeTime(time.time())))
 
-                    elif (not condition) and self.present_price <= self.last_buy * (1 - self.add_rate * np.log(1 + self.step)):
-                        self.logger.info('{}/{} 重新开始下一轮 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
-                        _env = '"key": {}, "secret": {}, "name": {}, "step": {}, "symbol": {}, "side": {}, "avg": {}, "buy_qty": {}, "sell_qty": {}, "win": {}, "last_buy": {}, "last_sell": {}, "lowest_price": {}, "highest_price": {}, "base_price": {}, "avg_tmp": {}, "max_position": {}, "t_start": {}"'.format(self.key, self.secret, self.name, self.step, self.symbol, self.side, self.avg, self.buy_qty, self.sell_qty, self.win, self.last_buy, self.last_sell, self.lowest_price, self.highest_price, self.base_price, self.avg_tmp, self.max_position, self.t_start)
-                        self.logger.info(_env)
-                        self.logger.info('condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.last_buy * (1 - self.add_rate * np.log(1 + self.step))))
-
-                        trade.open_order(self.symbol, 'SELL', sum(self.sell_qty[-2:]), price=round(self.avg * (1 + 0.002), self.price_precision), positionSide='LONG')
-                        trade.open_order(self.symbol, 'SELL', sum(self.sell_qty[:-2]), price=round(self.avg * (1 + self.profit), self.price_precision), positionSide='LONG')
-
-                        self.step = 0
-                        self.avg = 0.0
-                        self.last_buy = 0.0
-                        self.sell_qty = []
-                        self.lowest_price = 100000.0
-                        self.highest_price = 0.0
-                        self.base_price = 0.0
-                        self.avg_tmp = 0.0
-
-                    elif self.step == 1 and (self.present_price >= self.avg * (1 + self.profit) or (self.present_price >= self.avg * (1 + 0.002) and self.highest_price > 0)):
-                        self.highest_price = max(self.present_price, self.highest_price)
-                        # 最高处回调达到止盈位置则清仓
-                        if self.present_price <= self.highest_price * (1 - (self.highest_price / self.avg - 1) / 5):  # 重仓情形考虑回本平一半或平xx%的仓位, 待计算, 剩下依然重仓考虑吃多少点清仓
-                            self.logger.info('{}/{} 平多 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
+                    # 判断起始位大于 0, 至少开过一次仓
+                    elif self.step > 0:
+                        # 判断当前 开单数量 是否小于 最大可开单值
+                        condition = sum(self.sell_qty) / self.min_qty < self.max_add_times
+                        # 判断 没有亏损 && (not 开单数量上限) && 当前价格 小于等于 最新下单价格 * (1 - 容忍爆仓率 * )
+                        if self.if_loss and (not condition) and self.present_price <= self.last_buy * (1 - self.add_rate * np.log(1 + self.step)):
+                            self.logger.info('{}/{} 平多止损 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
                             _env = '"key": {}, "secret": {}, "name": {}, "step": {}, "symbol": {}, "side": {}, "avg": {}, "buy_qty": {}, "sell_qty": {}, "win": {}, "last_buy": {}, "last_sell": {}, "lowest_price": {}, "highest_price": {}, "base_price": {}, "avg_tmp": {}, "max_position": {}, "t_start": {}"'.format(self.key, self.secret, self.name, self.step, self.symbol, self.side, self.avg, self.buy_qty, self.sell_qty, self.win, self.last_buy, self.last_sell, self.lowest_price, self.highest_price, self.base_price, self.avg_tmp, self.max_position, self.t_start)
                             self.logger.info(_env)
                             self.logger.info('condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.last_buy * (1 - self.add_rate * np.log(1 + self.step))))
 
-                            res_short = trade.open_order(self.symbol, 'SELL', sum(self.sell_qty), price=self.present_price, positionSide='LONG')
+                            res_short = trade.open_order(self.symbol, 'SELL', sum(self.sell_qty), price=self.present_price, positionSide='LONG').json()
                             if not 'orderId' in res_short:
                                 self.logger.info('%s/%s 平多失败 \t %s \t %s' % (self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
                                 continue
@@ -444,19 +380,15 @@ class GridStrategy:
                             self.base_price = 0.0
                             self.avg_tmp = 0.0
 
-                            self.logger.info('%s/%s 清仓, 已实现盈利=%.2f（最大持有量=%s, %.1f小时）\t%s' % (self.symbol, self.side, self.win, self.max_position, (time.time() - self.t_start) / 3600, PublicModels.changeTime(time.time())))
-
-                        else:
-                            if self.present_price >= self.base_price * (1 + self.profit):
-                                if self.base_price > self.avg:
-                                    self.avg = self.avg_tmp
-                                self.avg_tmp = (self.avg * sum(self.sell_qty) / self.sell_qty[0] + self.present_price) / (sum(self.sell_qty) / self.sell_qty[0] + 1)
-                                self.logger.info('{}/{} 浮盈加仓 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
+                        elif condition and self.present_price <= self.last_buy * (1 - self.add_rate * np.log(1 + self.step)):
+                            self.lowest_price = min(self.present_price, self.lowest_price)
+                            if self.present_price >= self.lowest_price * (1 + (1 - self.lowest_price / self.last_buy) / 5):
+                                self.logger.info('{}/{} 加仓 {} {}'.format(self.symbol, self.side, sum(self.sell_qty), PublicModels.changeTime(time.time())))
                                 _env = '"key": {}, "secret": {}, "name": {}, "step": {}, "symbol": {}, "side": {}, "avg": {}, "buy_qty": {}, "sell_qty": {}, "win": {}, "last_buy": {}, "last_sell": {}, "lowest_price": {}, "highest_price": {}, "base_price": {}, "avg_tmp": {}, "max_position": {}, "t_start": {}"'.format(self.key, self.secret, self.name, self.step, self.symbol, self.side, self.avg, self.buy_qty, self.sell_qty, self.win, self.last_buy, self.last_sell, self.lowest_price, self.highest_price, self.base_price, self.avg_tmp, self.max_position, self.t_start)
                                 self.logger.info(_env)
                                 self.logger.info('condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.last_buy * (1 - self.add_rate * np.log(1 + self.step))))
 
-                                res_long = trade.open_order(self.symbol, 'BUY', self.sell_qty[0], price=self.present_price, positionSide='LONG')
+                                res_long = trade.open_order(self.symbol, 'BUY', sum(self.sell_qty), price=self.present_price, positionSide='LONG').json()
                                 if not 'orderId' in res_long:
                                     if res_long['msg'] == 'Margin is insufficient.':
                                         self.logger.info('%s/%s 可用金不足 \t %s \t %s' % (self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
@@ -464,34 +396,107 @@ class GridStrategy:
                                         self.logger.info('%s/%s 加仓失败 \t %s \t %s'%(self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
                                     continue
 
-                                self.base_price *= 1 + self.profit
-                                self.sell_qty.append(self.sell_qty[0])
+                                self.avg = (self.avg + self.present_price) / 2
+                                self.last_buy = self.present_price
+                                self.sell_qty.append(sum(self.sell_qty))
+                                self.step += 1
                                 self.win -= self.sell_qty[-1] * self.present_price * 4e-4
 
-                    ## 止盈最近的一次开仓
-                    ## 判断已经开单且 当前价格 >= 开单价格 * (1 + 0.003)
-                    elif self.step > 1 and self.present_price >= self.avg * (1 + 0.003):
-                        self.logger.info('{}/{} 平最近一次加仓 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
-                        _env = '"key": {}, "secret": {}, "name": {}, "step": {}, "symbol": {}, "side": {}, "avg": {}, "buy_qty": {}, "sell_qty": {}, "win": {}, "last_buy": {}, "last_sell": {}, "lowest_price": {}, "highest_price": {}, "base_price": {}, "avg_tmp": {}, "max_position": {}, "t_start": {}"'.format(self.key, self.secret, self.name, self.step, self.symbol, self.side, self.avg, self.buy_qty, self.sell_qty, self.win, self.last_buy, self.last_sell, self.lowest_price, self.highest_price, self.base_price, self.avg_tmp, self.max_position, self.t_start)
-                        self.logger.info(_env)
-                        self.logger.info('condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.avg * (1 + 0.003)))
+                                self.logger.info('%s/%s 当前仓位成本=%.1f, 均价=%.3f, 浮亏=%.2f, 已实现盈利=%.2f（最大持有量=%s, %.1f小时）\t %s' % (self.symbol, self.side, sum(self.sell_qty) * self.avg, self.avg,
+                                        sum(self.sell_qty) * (self.present_price - self.avg), self.win, self.max_position, (time.time() - self.t_start) / 3600, PublicModels.changeTime(time.time())))
 
-                        res_short = trade.open_order(self.symbol, 'SELL', self.sell_qty[-1], price=self.present_price, positionSide='LONG')
-                        if not 'orderId' in res_short:
-                            self.logger.info('%s/%s 平多失败 \t %s \t %s' % (self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
-                            continue
+                        elif (not condition) and self.present_price <= self.last_buy * (1 - self.add_rate * np.log(1 + self.step)):
+                            self.logger.info('{}/{} 重新开始下一轮 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
+                            _env = '"key": {}, "secret": {}, "name": {}, "step": {}, "symbol": {}, "side": {}, "avg": {}, "buy_qty": {}, "sell_qty": {}, "win": {}, "last_buy": {}, "last_sell": {}, "lowest_price": {}, "highest_price": {}, "base_price": {}, "avg_tmp": {}, "max_position": {}, "t_start": {}"'.format(self.key, self.secret, self.name, self.step, self.symbol, self.side, self.avg, self.buy_qty, self.sell_qty, self.win, self.last_buy, self.last_sell, self.lowest_price, self.highest_price, self.base_price, self.avg_tmp, self.max_position, self.t_start)
+                            self.logger.info(_env)
+                            self.logger.info('condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.last_buy * (1 - self.add_rate * np.log(1 + self.step))))
 
-                        nums = self.sell_qty.pop()
-                        self.win += nums * (self.present_price - self.avg) * (1 - 4e-4)
-                        self.step = 1
-                        self.lowest_price = 100000.0
-                        self.base_price = self.avg
-                        self.last_buy = self.avg
+                            trade.open_order(self.symbol, 'SELL', sum(self.sell_qty[-2:]), price=round(self.avg * (1 + 0.002), self.price_precision), positionSide='LONG').json()
+                            trade.open_order(self.symbol, 'SELL', sum(self.sell_qty[:-2]), price=round(self.avg * (1 + self.profit), self.price_precision), positionSide='LONG').json()
 
-                        self.logger.info('%s/%s 剩余仓位成本=%.1f, 均价=%.3f, 浮盈=%.2f, 已实现盈利=%.2f（最大持有量=%s, %.1f小时）\t %s' % (
-                            self.symbol, self.side, sum(self.sell_qty) * self.avg, self.avg, sum(self.sell_qty) * (self.present_price - self.avg), self.win, self.max_position, (time.time() - self.t_start) / 3600, PublicModels.changeTime(time.time())))
+                            self.step = 0
+                            self.avg = 0.0
+                            self.last_buy = 0.0
+                            self.sell_qty = []
+                            self.lowest_price = 100000.0
+                            self.highest_price = 0.0
+                            self.base_price = 0.0
+                            self.avg_tmp = 0.0
 
-            self.max_position = max(self.max_position, sum(self.buy_qty), sum(self.sell_qty)) / self.min_qty
+                        elif self.step == 1 and (self.present_price >= self.avg * (1 + self.profit) or (self.present_price >= self.avg * (1 + 0.002) and self.highest_price > 0)):
+                            self.highest_price = max(self.present_price, self.highest_price)
+                            # 最高处回调达到止盈位置则清仓
+                            if self.present_price <= self.highest_price * (1 - (self.highest_price / self.avg - 1) / 5):  # 重仓情形考虑回本平一半或平xx%的仓位, 待计算, 剩下依然重仓考虑吃多少点清仓
+                                self.logger.info('{}/{} 平多 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
+                                _env = '"key": {}, "secret": {}, "name": {}, "step": {}, "symbol": {}, "side": {}, "avg": {}, "buy_qty": {}, "sell_qty": {}, "win": {}, "last_buy": {}, "last_sell": {}, "lowest_price": {}, "highest_price": {}, "base_price": {}, "avg_tmp": {}, "max_position": {}, "t_start": {}"'.format(self.key, self.secret, self.name, self.step, self.symbol, self.side, self.avg, self.buy_qty, self.sell_qty, self.win, self.last_buy, self.last_sell, self.lowest_price, self.highest_price, self.base_price, self.avg_tmp, self.max_position, self.t_start)
+                                self.logger.info(_env)
+                                self.logger.info('condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.last_buy * (1 - self.add_rate * np.log(1 + self.step))))
+
+                                res_short = trade.open_order(self.symbol, 'SELL', sum(self.sell_qty), price=self.present_price, positionSide='LONG').json()
+                                if not 'orderId' in res_short:
+                                    self.logger.info('%s/%s 平多失败 \t %s \t %s' % (self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
+                                    continue
+
+                                self.win += sum(self.sell_qty) * (self.present_price - self.avg) * (1 - 4e-4)
+                                self.step = 0
+                                self.avg = 0.0
+                                self.last_buy = 0.0
+                                self.sell_qty = []
+                                self.lowest_price = 100000.0
+                                self.highest_price = 0.0
+                                self.base_price = 0.0
+                                self.avg_tmp = 0.0
+
+                                self.logger.info('%s/%s 清仓, 已实现盈利=%.2f（最大持有量=%s, %.1f小时）\t%s' % (self.symbol, self.side, self.win, self.max_position, (time.time() - self.t_start) / 3600, PublicModels.changeTime(time.time())))
+
+                            else:
+                                if self.present_price >= self.base_price * (1 + self.profit):
+                                    if self.base_price > self.avg:
+                                        self.avg = self.avg_tmp
+                                    self.avg_tmp = (self.avg * sum(self.sell_qty) / self.sell_qty[0] + self.present_price) / (sum(self.sell_qty) / self.sell_qty[0] + 1)
+                                    self.logger.info('{}/{} 浮盈加仓 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
+                                    _env = '"key": {}, "secret": {}, "name": {}, "step": {}, "symbol": {}, "side": {}, "avg": {}, "buy_qty": {}, "sell_qty": {}, "win": {}, "last_buy": {}, "last_sell": {}, "lowest_price": {}, "highest_price": {}, "base_price": {}, "avg_tmp": {}, "max_position": {}, "t_start": {}"'.format(self.key, self.secret, self.name, self.step, self.symbol, self.side, self.avg, self.buy_qty, self.sell_qty, self.win, self.last_buy, self.last_sell, self.lowest_price, self.highest_price, self.base_price, self.avg_tmp, self.max_position, self.t_start)
+                                    self.logger.info(_env)
+                                    self.logger.info('condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.last_buy * (1 - self.add_rate * np.log(1 + self.step))))
+
+                                    res_long = trade.open_order(self.symbol, 'BUY', self.sell_qty[0], price=self.present_price, positionSide='LONG').json()
+                                    if not 'orderId' in res_long:
+                                        if res_long['msg'] == 'Margin is insufficient.':
+                                            self.logger.info('%s/%s 可用金不足 \t %s \t %s' % (self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
+                                        else:
+                                            self.logger.info('%s/%s 加仓失败 \t %s \t %s'%(self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
+                                        continue
+
+                                    self.base_price *= 1 + self.profit
+                                    self.sell_qty.append(self.sell_qty[0])
+                                    self.win -= self.sell_qty[-1] * self.present_price * 4e-4
+
+                        ## 止盈最近的一次开仓
+                        ## 判断已经开单且 当前价格 >= 开单价格 * (1 + 0.003)
+                        elif self.step > 1 and self.present_price >= self.avg * (1 + 0.003):
+                            self.logger.info('{}/{} 平最近一次加仓 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
+                            _env = '"key": {}, "secret": {}, "name": {}, "step": {}, "symbol": {}, "side": {}, "avg": {}, "buy_qty": {}, "sell_qty": {}, "win": {}, "last_buy": {}, "last_sell": {}, "lowest_price": {}, "highest_price": {}, "base_price": {}, "avg_tmp": {}, "max_position": {}, "t_start": {}"'.format(self.key, self.secret, self.name, self.step, self.symbol, self.side, self.avg, self.buy_qty, self.sell_qty, self.win, self.last_buy, self.last_sell, self.lowest_price, self.highest_price, self.base_price, self.avg_tmp, self.max_position, self.t_start)
+                            self.logger.info(_env)
+                            self.logger.info('condition: {}, present_price: {}, CalculatedValue: {}'.format(condition, self.present_price, self.avg * (1 + 0.003)))
+
+                            res_short = trade.open_order(self.symbol, 'SELL', self.sell_qty[-1], price=self.present_price, positionSide='LONG').json()
+                            if not 'orderId' in res_short:
+                                self.logger.info('%s/%s 平多失败 \t %s \t %s' % (self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
+                                continue
+
+                            nums = self.sell_qty.pop()
+                            self.win += nums * (self.present_price - self.avg) * (1 - 4e-4)
+                            self.step = 1
+                            self.lowest_price = 100000.0
+                            self.base_price = self.avg
+                            self.last_buy = self.avg
+
+                            self.logger.info('%s/%s 剩余仓位成本=%.1f, 均价=%.3f, 浮盈=%.2f, 已实现盈利=%.2f（最大持有量=%s, %.1f小时）\t %s' % (
+                                self.symbol, self.side, sum(self.sell_qty) * self.avg, self.avg, sum(self.sell_qty) * (self.present_price - self.avg), self.win, self.max_position, (time.time() - self.t_start) / 3600, PublicModels.changeTime(time.time())))
+
+                self.max_position = max(self.max_position, sum(self.buy_qty), sum(self.sell_qty)) / self.min_qty
+            except Exception as err:
+                self.logger.error("异常错误 {} 已忽略 {}".format(err, PublicModels.changeTime(time.time())))
 
 if __name__ == '__main__':
     args = command_line_args(sys.argv[1:])
