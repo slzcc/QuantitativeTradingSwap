@@ -115,12 +115,12 @@ class GridStrategy:
                 price1m_low = list(map(lambda x: float(x[3]), klines))
                 # 获取 k 线中最高的价格(取每个 list 中第 2 个位置数据)
                 price1m_high = list(map(lambda x: float(x[2]), klines))
-                # 获取 k 线中现在的价格
-                self.present_price = float(klines[-1][4])
                 # 记录最小购买单价
                 self.position_size = self.min_qty
                 # 如果策略为开 空 时
                 if self.side != '多':
+                    # 获取 k 线中现在的价格(低价)
+                    self.present_price = float(klines[-1][4])
                     self.logger.info('{}/{} U本位合约正在运行, 当前价格 {} , 已购买币种总数 {} , 已经下单总次数 {} , 锚点位置 {} \t {}'.format(
                         self.symbol, self.side, self.present_price, sum(self.buy_qty), len(self.buy_qty), self.step, PublicModels.changeTime(time.time())))
                     # 起始位置 0, 且没有开仓
@@ -324,17 +324,18 @@ class GridStrategy:
 
                 # 如果策略为开 多 时
                 else:
+                    # 获取 k 线中现在的价格(低价)
+                    self.present_price = float(klines[-1][2])
                     self.logger.info('{}/{} U本位合约正在运行, 当前价格 {} , 已购买币种总数 {} , 已经下单总次数 {} , 锚点位置 {} \t {}'.format(
                         self.symbol, self.side, self.present_price, sum(self.sell_qty), len(self.sell_qty), self.step, PublicModels.changeTime(time.time())))
                     # 当起始位为 0, 则没有任何开单
                     if self.step == 0:
-                        # 判断当前价格 大于/等于 后三根 k 线的最大值
-                        buy_condition1 = self.present_price >= max(price1m_high[-4:-1])
-                        # buy_condition1 = self.present_price >= max(price1m_high[0:4])
-                        # 判断当前价格 小于/等于 后四根 k 线的最小值
-                        buy_condition2 = self.present_price <= min(price1m_high[-5:-1])
+                        # 判断当前价格 小于/等于 前三根 k 线的最大值
+                        buy_condition1 = self.present_price <= max(price1m_high[:5])
+                        # 判断当前价格 大于/等于 后四根 k 线的最小值
+                        buy_condition2 = self.present_price >= min(price1m_high[-5:-1])
                         
-                        # 判断是否存在
+                        # 判断当前价格
                         if buy_condition1 or buy_condition2:
                             self.logger.info('{}/{} 开多 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
                             # 下单开多
