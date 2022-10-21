@@ -111,7 +111,7 @@ class GridStrategy:
         while True:
             try:
                 # 获取 1m 时间的 k 线
-                klines = get_history_k(typ='futures', coin=self.symbol, T='5m').json()
+                klines = get_history_k(typ='futures', coin=self.symbol, T='1m').json()
                 # 获取 k 线中最低的价格(取每个 list 中第 3 个位置数据)
                 price1m_low = list(map(lambda x: float(x[3]), klines))
                 # 获取 k 线中最高的价格(取每个 list 中第 2 个位置数据)
