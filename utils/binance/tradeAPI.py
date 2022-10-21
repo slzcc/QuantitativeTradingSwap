@@ -130,7 +130,7 @@ class TradeApi:
         header = {"X-MBX-APIKEY": self.api}
         return PublicModels.PublicRequests(request={"model": "GET", "url": url, "header": header, "timeout": 5, "verify": True, "proxies": PROXIES_DEFAULT_DATA}, recursive_abnormal={"recursive": 10, "count": 0, "alert_count": 10})
 
-    def open_order(self, symbol, side, quantity, price, positionSide):
+    def open_order(self, symbol, side, quantity, price, positionSide, timesleep=1):
         ''' 开单
             :param side: BUY SELL
         '''
@@ -139,6 +139,7 @@ class TradeApi:
         params["recvWindow"] = binance_recvWindow
         query = self._sign(self.secret, params)
         header = {"X-MBX-APIKEY": self.api}
+        time.sleep(timesleep)
         return PublicModels.PublicRequests(request={"model": "POST", "url": path, "header": header, "params": query, "timeout": 5, "verify": True, "proxies": PROXIES_DEFAULT_DATA}, recursive_abnormal={"recursive": 10, "count": 0, "alert_count": 10})
 
     def order_reduce(self, symbol, side, positionSide, tp, quantity=None, price=None, stopPrice=None, callbackRate=1.0, activationPrice=None):
