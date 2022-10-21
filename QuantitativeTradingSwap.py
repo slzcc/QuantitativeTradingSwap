@@ -120,7 +120,7 @@ class GridStrategy:
                 self.position_size = self.min_qty
                 try:
                     # 获取最新价格
-                    self.present_price = get_present_price('{}'.format(self.symbol)).json()['price']
+                    self.present_price = float(get_present_price('{}'.format(self.symbol)).json()['price'])
                 except:
                     # 获取 k 线中现在的价格(低价)
                     self.present_price = float(klines[-1][2])
