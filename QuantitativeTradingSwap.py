@@ -111,7 +111,7 @@ class GridStrategy:
         while True:
             try:
                 # 获取 1m 时间的 k 线
-                klines = get_history_k(typ='futures', coin=self.symbol, T='1m').json()
+                klines = get_history_k(typ='futures', coin=self.symbol, T='5m').json()
                 # 获取 k 线中最低的价格(取每个 list 中第 3 个位置数据)
                 price1m_low = list(map(lambda x: float(x[3]), klines))
                 # 获取 k 线中最高的价格(取每个 list 中第 2 个位置数据)
@@ -127,9 +127,9 @@ class GridStrategy:
                     # 起始位置 0, 且没有开仓
                     if self.step == 0:
                         # 判断当前价格 大于/等于 前 50 根 k 线的最大值
-                        sell_condition1 = present_price >= max(price1m_low[:500])
+                        sell_condition1 = self.present_price >= max(price1m_low[:500])
                         # 判断当前价格 小于/等于 后 50 根 k 线的最小值
-                        sell_condition2 = present_price <= max(price1m_high[-500:])
+                        sell_condition2 = self.present_price <= max(price1m_high[-500:])
 
                         # 判断数据是否为空
                         if sell_condition1 and sell_condition2:
@@ -346,9 +346,9 @@ class GridStrategy:
                     if self.step == 0:
 
                         # 判断当前价格 大于/等于 10 到 15 根 k 线的最小值
-                        buy_condition1 = present_price <= min(price1m_low[:400])
+                        buy_condition1 = self.present_price <= min(price1m_low[:400])
                         # 判断当前价格 大于/等于 10 到 15 根 k 线的最小值
-                        buy_condition2 = present_price >= min(price1m_high[-500:])
+                        buy_condition2 = self.present_price >= min(price1m_high[-500:])
 
                         # 判断当前价格
                         if buy_condition1 and buy_condition2:
