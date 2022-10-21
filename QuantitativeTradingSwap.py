@@ -126,13 +126,13 @@ class GridStrategy:
                         self.symbol, self.side, self.present_price, sum(self.buy_qty), len(self.buy_qty), self.step, PublicModels.changeTime(time.time())))
                     # 起始位置 0, 且没有开仓
                     if self.step == 0:
-                        # 判断当前价格 小于/等于 前三根 k 线的最大值
-                        sell_condition1 = self.present_price <= max(price1m_low[:5])
-                        # 判断当前价格 大于/等于 后四根 k 线的最小值
-                        sell_condition2 = self.present_price >= min(price1m_high[-5:-1])
+                        # 判断当前价格 大于/等于 前 50 根 k 线的最大值
+                        sell_condition1 = present_price >= max(price1m_low[:500])
+                        # 判断当前价格 小于/等于 后 50 根 k 线的最小值
+                        sell_condition2 = present_price <= max(price1m_high[-500:])
 
                         # 判断数据是否为空
-                        if sell_condition1 or sell_condition2:
+                        if sell_condition1 and sell_condition2:
                             self.logger.info('{}/{} 下单开空 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
                             # 下单开空, 市价开单
                             res_short = trade.open_order(self.symbol, 'SELL', self.position_size, price=self.present_price, positionSide='SHORT').json()
@@ -346,10 +346,12 @@ class GridStrategy:
                     if self.step == 0:
 
                         # 判断当前价格 大于/等于 10 到 15 根 k 线的最小值
-                        buy_condition1 = self.present_price <= min(price1m_high[10:15])
+                        buy_condition1 = present_price <= min(price1m_low[:400])
+                        # 判断当前价格 大于/等于 10 到 15 根 k 线的最小值
+                        buy_condition2 = present_price >= min(price1m_high[-500:])
 
                         # 判断当前价格
-                        if buy_condition1:
+                        if buy_condition1 and buy_condition2:
                             self.logger.info('{}/{} 开多 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
                             # 下单开多
                             res_long = trade.open_order(self.symbol, 'BUY', self.position_size, price=self.present_price, positionSide='LONG').json()
