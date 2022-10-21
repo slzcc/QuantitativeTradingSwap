@@ -118,8 +118,12 @@ class GridStrategy:
                 price1m_high = list(map(lambda x: float(x[2]), klines))
                 # 记录最小购买单价
                 self.position_size = self.min_qty
-                # 获取 k 线中现在的价格(低价)
-                self.present_price = float(klines[-1][2])
+                try:
+                    # 获取最新价格
+                    self.present_price = get_present_price('{}'.format(self.symbol)).json()['price']
+                except:
+                    # 获取 k 线中现在的价格(低价)
+                    self.present_price = float(klines[-1][2])
                 # 如果策略为开 空 时
                 if self.side != '多':
                     self.logger.info('{}/{} U本位合约正在运行, 当前价格 {} , 已购买币种总数 {} , 已经下单总次数 {} , 锚点位置 {} \t {}'.format(
