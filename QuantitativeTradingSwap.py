@@ -119,11 +119,12 @@ class GridStrategy:
                 # 记录最小购买单价
                 self.position_size = self.min_qty
                 try:
-                    # 获取最新价格
-                    self.present_price = float(get_present_price('{}'.format(self.symbol)).json()['price'])
+                    # 获取 k 线中现在的价格(第一个价格)
+                    self.present_price = float(klines[-1][4])
                 except:
-                    # 获取 k 线中现在的价格(低价)
-                    self.present_price = float(klines[-1][2])
+                    # 获取最新价格
+                    # 有请求延迟
+                    self.present_price = float(get_present_price('{}'.format(self.symbol)).json()['price'])
                 # 如果策略为开 空 时
                 if self.side != '多':
                     self.logger.info('{}/{} U本位合约正在运行, 当前价格 {} , 已购买币种总数 {} , 已经下单总次数 {} , 锚点位置 {} \t {}'.format(
