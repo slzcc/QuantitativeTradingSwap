@@ -118,10 +118,10 @@ class GridStrategy:
                 price1m_high = list(map(lambda x: float(x[2]), klines))
                 # 记录最小购买单价
                 self.position_size = self.min_qty
+                # 获取 k 线中现在的价格(低价)
+                self.present_price = float(klines[-1][2])
                 # 如果策略为开 空 时
                 if self.side != '多':
-                    # 获取 k 线中现在的价格(低价)
-                    self.present_price = float(klines[-1][4])
                     self.logger.info('{}/{} U本位合约正在运行, 当前价格 {} , 已购买币种总数 {} , 已经下单总次数 {} , 锚点位置 {} \t {}'.format(
                         self.symbol, self.side, self.present_price, sum(self.buy_qty), len(self.buy_qty), self.step, PublicModels.changeTime(time.time())))
                     # 起始位置 0, 且没有开仓
@@ -338,8 +338,6 @@ class GridStrategy:
 
                 # 如果策略为开 多 时
                 else:
-                    # 获取 k 线中现在的价格(低价)
-                    self.present_price = float(klines[-1][2])
                     self.logger.info('{}/{} U本位合约正在运行, 当前价格 {} , 已购买币种总数 {} , 已经下单总次数 {} , 锚点位置 {} \t {}'.format(
                         self.symbol, self.side, self.present_price, sum(self.sell_qty), len(self.sell_qty), self.step, PublicModels.changeTime(time.time())))
                     # 当起始位为 0, 则没有任何开单
