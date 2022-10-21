@@ -349,7 +349,7 @@ class GridStrategy:
                     if self.step == 0:
 
                         # 判断当前价格 小于/等于 前 100 根 k 线的最小值
-                        buy_condition1 = present_price <= min(price1m_low[:100])
+                        buy_condition1 = self.present_price <= min(price1m_low[:100])
 
                         # 判断当前价格
                         if buy_condition1:
