@@ -42,6 +42,7 @@
         "min_qty": 0.1,       # 最小开仓购买币的数量
         "max_add_times": 8,   # 最大开单数量
         "profit": 0.4,        # 清仓波动zhi, 使用时单位会 * 100, 作为 % 使用
+        "min_profit": 0.2,    # 与 profit 做区间
         "add_rate": 1.2,      # 加仓间隔, 使用时单位会 * 100, 作为 % 使用
         "position_times": 10, # 开仓倍数
         "T": 72,              # k 线获取时间(/h)
