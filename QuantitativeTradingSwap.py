@@ -131,9 +131,9 @@ class GridStrategy:
                         self.symbol, self.side, self.present_price, sum(self.buy_qty), len(self.buy_qty), self.step, PublicModels.changeTime(time.time())))
                     # 起始位置 0, 且没有开仓
                     if self.step == 0:
-                        # 判断当前价格 大于/等于 前 50 根 k 线的最大值
+                        # 判断当前价格 大于/等于 前 500 根 k 线的最大值
                         sell_condition1 = self.present_price >= max(price1m_low[:500])
-                        # 判断当前价格 小于/等于 后 50 根 k 线的最小值
+                        # 判断当前价格 小于/等于 后 500 根 k 线的最小值
                         sell_condition2 = self.present_price <= max(price1m_high[-500:])
 
                         # 判断数据是否为空
@@ -348,13 +348,11 @@ class GridStrategy:
                     # 当起始位为 0, 则没有任何开单
                     if self.step == 0:
 
-                        # 判断当前价格 大于/等于 10 到 15 根 k 线的最小值
-                        buy_condition1 = self.present_price <= min(price1m_low[:400])
-                        # 判断当前价格 大于/等于 10 到 15 根 k 线的最小值
-                        buy_condition2 = self.present_price >= min(price1m_high[-500:])
+                        # 判断当前价格 小于/等于 前 100 根 k 线的最小值
+                        buy_condition1 = present_price <= min(price1m_low[:100])
 
                         # 判断当前价格
-                        if buy_condition1 and buy_condition2:
+                        if buy_condition1:
                             self.logger.info('{}/{} 开多 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
                             # 下单开多
                             res_long = trade.open_order(self.symbol, 'BUY', self.position_size, price=self.present_price, positionSide='LONG').json()
