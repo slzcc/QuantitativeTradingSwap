@@ -41,6 +41,8 @@ def parse_args():
                                  help='凭证 key', default='')
     connect_setting.add_argument('-s', '--secret', dest='secret', type=str,
                                  help='凭证 secret', default='')
+    connect_setting.add_argument('-t', '--token', dest='token', type=str,
+                                 help='当前任务识别身份', default='')
     parser.add_argument('--help', dest='help', action='store_true', help='help information', default=False)
 
     return parser
@@ -58,6 +60,8 @@ def command_line_args(args):
         raise ValueError('缺少用户凭证 key!')
     if not args.secret:
         raise ValueError('缺少用户凭证 secret!')
+    if not args.token:
+        raise ValueError('缺少用户凭证 secret!')        
     return args
 
 def compare_items(items):

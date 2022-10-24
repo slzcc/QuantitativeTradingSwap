@@ -81,6 +81,16 @@ def changeTime(sec):
     base_time = datetime.strptime('1970-01-01 00:00:00.0', '%Y-%m-%d %H:%M:%S.%f')
     return str(base_time + timedelta(seconds=8 * 3600 + int(sec)))
 
+# 时间格式化
+def changeTimeNoTabs(sec):
+    """
+    时间格式化
+    :sec time.time()
+    :return ep: 2022-10-10_17
+    """
+    base_time = time.localtime(sec)
+    return time.strftime('%Y-%m-%d_%H', base_time)
+
 def getClassENV(cls):
     """
     获取 Class 静态环境变量
