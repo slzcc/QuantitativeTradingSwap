@@ -11,7 +11,6 @@
 #***********************************************
 import redis
 
-
 class redisUtils:
 
     def __init__(self):
@@ -96,8 +95,18 @@ class redisUtils:
         """
         list 数据
         移除 key 中索引位置的值
+        index > 0 : 从表头开始向表尾搜索，移除与 VALUE 相等的元素，数量为 COUNT 。
+        index < 0 : 从表尾开始向表头搜索，移除与 VALUE 相等的元素，数量为 COUNT 的绝对值。
+        index = 0 : 移除表中所有与 VALUE 相等的值。
         """
         return self.client.lrem(key, data, index)
+
+    def ltrimKey(self, key, start, stop):
+        """
+        list 数据
+        移除选中之外的数据
+        """
+        return self.client.ltrim(key, data, start, stop)
 
     def getKeys(self, keys=None):
         """
