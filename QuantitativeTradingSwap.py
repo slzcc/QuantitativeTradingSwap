@@ -267,7 +267,7 @@ class GridStrategy(Process):
                             res_short = trade.open_order(self.symbol, 'SELL', float(self.redisClient.getKey("{}_position_size_{}".format(self.token, self.direction))), price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='SHORT').json()
 
                             # 判断下单是否成功
-                            if not 'orderId' in res_short:
+                            if not 'orderId' in res_short.keys():
                                 self.logger.info('{}/{} 开空失败 \t {} \t {}'.format(self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
                                 continue
                             else:
@@ -328,7 +328,7 @@ class GridStrategy(Process):
                             res_short = trade.open_order(self.symbol, 'BUY', sum([float(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)]), price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='SHORT').json()
 
                             # 判断下单平空
-                            if not 'orderId' in res_short:
+                            if not 'orderId' in res_short.keys():
                                 self.logger.info('{}/{} 平空失败 \t {} \t {}'.format(self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
                                 continue
                             else:
@@ -374,7 +374,7 @@ class GridStrategy(Process):
                                 res_short = trade.open_order(self.symbol, 'SELL', sum([float(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)]), price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='SHORT').json()
 
                                 # 判断下单加仓
-                                if not 'orderId' in res_short:
+                                if not 'orderId' in res_short.keys():
                                     if res_short['msg'] == 'Margin is insufficient.':
                                         self.logger.info('{}/{} 可用金不足 \t {} \t {}'.format(self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
                                     else:
@@ -426,7 +426,7 @@ class GridStrategy(Process):
 
                             _sell_number = [float(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)]
                             res_short = trade.open_order(self.symbol, 'BUY', sum(_sell_number[-2:]), price=round(float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * (1 - self.min_profit), self.price_precision), positionSide='SHORT').json()
-                            if not 'orderId' in res_short:
+                            if not 'orderId' in res_short.keys():
                                 self.logger.info('%s/%s 重新开始下一轮失败1 \t %s \t %s' % (self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
                                 continue
                             else:
@@ -435,7 +435,7 @@ class GridStrategy(Process):
                                     self.redisClient.brpopKey("{}_short_qty".format(self.token))
 
                             res_short = trade.open_order(self.symbol, 'BUY', sum(_sell_number[:-2]), price=round(float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * (1 - self.profit), self.price_precision), positionSide='SHORT').json()
-                            if not 'orderId' in res_short:
+                            if not 'orderId' in res_short.keys():
                                 self.logger.info('%s/%s 重新开始下一轮失败2 \t %s \t %s' % (self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
                                 continue
                             else:
@@ -479,7 +479,7 @@ class GridStrategy(Process):
 
                                 res_short = trade.open_order(self.symbol, 'BUY', sum([float(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)]), price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='SHORT').json()
 
-                                if not 'orderId' in res_short:
+                                if not 'orderId' in res_short.keys():
                                     self.logger.info('%s/%s 平空失败 \t %s \t %s' % (self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
                                     continue
                                 else:
@@ -530,7 +530,7 @@ class GridStrategy(Process):
 
                                     res_short = trade.open_order(self.symbol, 'SELL', [float(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)][0], price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='SHORT').json()
 
-                                    if not 'orderId' in res_short:
+                                    if not 'orderId' in res_short.keys():
                                         if res_short['msg'] == 'Margin is insufficient.':
                                             self.logger.info('%s/%s 可用金不足 \t %s \t %s' % (self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
                                         else:
@@ -578,7 +578,7 @@ class GridStrategy(Process):
                             res_short = trade.open_order(self.symbol, 'BUY', [float(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)][-1], price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='SHORT').json()
 
                             # 判断下单平仓
-                            if not 'orderId' in res_short:
+                            if not 'orderId' in res_short.keys():
                                 self.logger.info('{}/{} 平空失败 \t {} \t {}'.format(self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
                                 continue
                             else:
@@ -636,7 +636,7 @@ class GridStrategy(Process):
                             res_long = trade.open_order(self.symbol, 'BUY', float(self.redisClient.getKey("{}_position_size_{}".format(self.token, self.direction))), price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='LONG').json()
 
                             # 判断是否下单成功
-                            if not 'orderId' in res_long:
+                            if not 'orderId' in res_long.keys():
                                 self.logger.info('{}/{} 开多失败 \t {} \t {}'.format(self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
                                 continue
                             else:
@@ -684,7 +684,7 @@ class GridStrategy(Process):
 
                             res_long = trade.open_order(self.symbol, 'SELL', sum([float(item) for item in self.redisClient.lrangeKey("{}_long_qty".format(self.token), 0, -1)]), price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='LONG').json()
 
-                            if not 'orderId' in res_long:
+                            if not 'orderId' in res_long.keys():
                                 self.logger.info('%s/%s 平多失败 \t %s \t %s' % (self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
                                 continue
                             else:
@@ -726,7 +726,7 @@ class GridStrategy(Process):
 
                                 res_long = trade.open_order(self.symbol, 'BUY', sum([float(item) for item in self.redisClient.lrangeKey("{}_long_qty".format(self.token), 0, -1)]), price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='LONG').json()
 
-                                if not 'orderId' in res_long:
+                                if not 'orderId' in res_long.keys():
                                     if res_long['msg'] == 'Margin is insufficient.':
                                         self.logger.info('%s/%s 可用金不足 \t %s \t %s' % (self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
                                     else:
@@ -775,7 +775,7 @@ class GridStrategy(Process):
 
                             _sell_number = [float(item) for item in self.redisClient.lrangeKey("{}_long_qty".format(self.token), 0, -1)]
                             res_long = trade.open_order(self.symbol, 'SELL', sum(_sell_number[-2:]), price=round(float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * (1 + self.min_profit), self.price_precision), positionSide='LONG').json()
-                            if not 'orderId' in res_long:
+                            if not 'orderId' in res_long.keys():
                                 self.logger.info('%s/%s 重新开始下一轮失败1 \t %s \t %s' % (self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
                                 continue
                             else:
@@ -784,7 +784,7 @@ class GridStrategy(Process):
                                     self.redisClient.blpopKey("{}_long_qty".format(self.token))
 
                             res_long = trade.open_order(self.symbol, 'SELL', sum(_sell_number[:-2]), price=round(float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * (1 + self.profit), self.price_precision), positionSide='LONG').json()
-                            if not 'orderId' in res_long:
+                            if not 'orderId' in res_long.keys():
                                 self.logger.info('%s/%s 重新开始下一轮失败2 \t %s \t %s' % (self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
                                 continue
                             else:
@@ -827,7 +827,7 @@ class GridStrategy(Process):
 
                                 res_long = trade.open_order(self.symbol, 'SELL', sum([float(item) for item in self.redisClient.lrangeKey("{}_long_qty".format(self.token), 0, -1)]), price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='LONG').json()
                                 
-                                if not 'orderId' in res_long:
+                                if not 'orderId' in res_long.keys():
                                     self.logger.info('%s/%s 平多失败 \t %s \t %s' % (self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
                                     continue
                                 else:
@@ -880,7 +880,7 @@ class GridStrategy(Process):
 
                                     res_long = trade.open_order(self.symbol, 'BUY', [float(item) for item in self.redisClient.lrangeKey("{}_long_qty".format(self.token), 0, -1)][0], price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='LONG').json()
 
-                                    if not 'orderId' in res_long:
+                                    if not 'orderId' in res_long.keys():
                                         if res_long['msg'] == 'Margin is insufficient.':
                                             self.logger.info('%s/%s 可用金不足 \t %s \t %s' % (self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
                                         else:
@@ -931,7 +931,7 @@ class GridStrategy(Process):
 
                             res_long = trade.open_order(self.symbol, 'SELL', [float(item) for item in self.redisClient.lrangeKey("{}_long_qty".format(self.token), 0, -1)][-1], price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='LONG').json()
 
-                            if not 'orderId' in res_long:
+                            if not 'orderId' in res_long.keys():
                                 self.logger.info('%s/%s 平多失败 \t %s \t %s' % (
                                     self.symbol,
                                     self.side,
