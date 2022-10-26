@@ -370,7 +370,7 @@ class GridStrategy(Process):
                                 # _env["CalculatedValue"] = float(self.redisClient.getKeys("{}_last_trade_price_{}".format(self.token, self.direction))) * (1 + self.add_rate * np.log(1 - int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction)))))
                                 self.logger.info(_env)
 
-                                # 下单加仓
+                                # 下单加仓, 加仓会加整个仓位的一倍
                                 res_short = trade.open_order(self.symbol, 'SELL', sum([float(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)]), price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='SHORT').json()
 
                                 # 判断下单加仓
@@ -452,14 +452,14 @@ class GridStrategy(Process):
                             self.redisClient.setKey("{}_avg_tmp_{}".format(self.token, self.direction), 0.0)
 
                         # 判断 第一次开仓后 && (当前价格 小于等于 购买价格 * (1 - self.min_profit)) && 最低价格 < 100000
-                        elif int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction))) == -1 and (float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) <= float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * (1 - self.profit) or (float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) <= float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * (1 - self.min_profit) and float(self.redisClient.getKey("{}_highest_price_{}".format(self.token, self.direction))) < 100000)):
+                        elif int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction))) == -1 and (float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) <= float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * (1 - self.profit) or (float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) <= float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * (1 - self.min_profit) and float(self.redisClient.getKey("{}_lowest_price_{}".format(self.token, self.direction))) < 100000)):
                             _lowest_price = min(float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), float(self.redisClient.getKey("{}_lowest_price_{}".format(self.token, self.direction))))
                             self.redisClient.setKey("{}_lowest_price_{}".format(self.token, self.direction), _lowest_price)
 
                             # 最高处回调达到止盈位置则减仓一次
-                            # 当盈利大于 0.00128 时就可以进行减仓一次
+                            # 当盈利大于 0.00128 时就可以进行清仓
                             if float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) >= float(self.redisClient.getKey("{}_lowest_price_{}".format(self.token, self.direction))) * (1 + (1 - float(self.redisClient.getKey("{}_lowest_price_{}".format(self.token, self.direction))) / float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction)))) / 5):  # 重仓情形考虑回本平一半或平xx%的仓位, 待计算, 剩下依然重仓考虑吃多少点清仓
-                                self.logger.info('{}/{} 盈利平空 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
+                                self.logger.info('{}/{} 盈利平空全仓 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
 
                                 # 输出 Redis 数据内容
                                 _str_list = self.redisClient.getKeys("{}*{}".format(self.token, self.direction))
@@ -489,7 +489,7 @@ class GridStrategy(Process):
                                 _win = (sum([float(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)]) * (float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) - float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction)))) * (1 - 4e-4)) + float(self.redisClient.getKey("{}_win_{}".format(self.token, self.direction)))
                                 self.redisClient.setKey("{}_win_{}".format(self.token, self.direction), _win)
                                 self.redisClient.setKey("{}_avg_{}".format(self.token, self.direction), 0.0)
-                                self.redisClient.setKey("{}_last_sell{}".format(self.token, self.direction), 0.0)
+                                self.redisClient.setKey("{}_last_trade_price_{}".format(self.token, self.direction), 0.0)
                                 self.redisClient.setKey("{}_lowest_price_{}".format(self.token, self.direction), 100000.0)
                                 self.redisClient.setKey("{}_highest_price_{}".format(self.token, self.direction), 0.0)
                                 self.redisClient.setKey("{}_base_price_{}".format(self.token, self.direction), 0.0)
@@ -528,7 +528,7 @@ class GridStrategy(Process):
                                     # _env["CalculatedValue"] = float(self.redisClient.getKeys("{}_last_trade_price_{}".format(self.token, self.direction))) * (1 + self.add_rate * np.log(1 - int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction)))))
                                     self.logger.info(_env)
 
-                                    res_short = trade.open_order(self.symbol, 'SELL', [float(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)][0], price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='SHORT').json()
+                                    res_short = trade.open_order(self.symbol, 'SELL', float(self.redisClient.getKey("{}_position_size_{}".format(self.token, self.direction))), price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='SHORT').json()
 
                                     if not 'orderId' in res_short.keys():
                                         if res_short['msg'] == 'Margin is insufficient.':
@@ -557,7 +557,7 @@ class GridStrategy(Process):
                                         PublicModels.changeTime(time.time())))
 
                         elif int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction))) < -1 and float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) <= float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * (1 - 0.003):
-                            self.logger.info('{}/{} 平最近一次加仓 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
+                            self.logger.info('{}/{} 平老单一次加仓 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
                             # 输出 Redis 数据内容
                             _str_list = self.redisClient.getKeys("{}*{}".format(self.token, self.direction))
                             _qty_list = self.redisClient.getKeys("{}*qty".format(self.token))
@@ -699,6 +699,7 @@ class GridStrategy(Process):
                             self.redisClient.setKey("{}_highest_price_{}".format(self.token, self.direction), 0.0)
                             self.redisClient.setKey("{}_base_price_{}".format(self.token, self.direction), 0.0)
                             self.redisClient.setKey("{}_avg_tmp_{}".format(self.token, self.direction), 0.0)
+                            self.redisClient.setKey("{}_step_{}".format(self.token, self.direction), 0)
 
                         # 当前价格小于购买价格时的比例价格则进行 虚亏加仓
                         # 亏本达到 add_rate% * 持仓数量 时进行虚亏加仓, 判定值根据持仓单的数据进行上下浮动
@@ -736,7 +737,7 @@ class GridStrategy(Process):
                                     self.redisClient.setKey('{}_orderId_{}_{}_{}'.format(self.token, res_long["orderId"], 'LONG', PublicModels.changeTimeNoTabs(time.time())), json.dumps(res_long))
                                     self.redisClient.lpushKey("{}_long_qty".format(self.token), sum([float(item) for item in self.redisClient.lrangeKey("{}_long_qty".format(self.token), 0, -1)]))
 
-                                _avg = (float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) + float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction)))) /2
+                                _avg = (float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) + float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction)))) / 2
                                 self.redisClient.setKey("{}_avg_{}".format(self.token, self.direction), _avg)
                                 self.redisClient.setKey("{}_last_trade_price_{}".format(self.token, self.direction), float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))))
                                 self.redisClient.incrKey("{}_step_{}".format(self.token, self.direction))
@@ -781,7 +782,7 @@ class GridStrategy(Process):
                             else:
                                 self.redisClient.setKey('{}_orderId_{}_{}_{}'.format(self.token, res_long["orderId"], 'LONG', PublicModels.changeTimeNoTabs(time.time())), json.dumps(res_long))
                                 for item in _sell_number[-2:]:
-                                    self.redisClient.blpopKey("{}_long_qty".format(self.token))
+                                    self.redisClient.brpopKey("{}_long_qty".format(self.token))
 
                             res_long = trade.open_order(self.symbol, 'SELL', sum(_sell_number[:-2]), price=round(float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * (1 + self.profit), self.price_precision), positionSide='LONG').json()
                             if not 'orderId' in res_long.keys():
@@ -793,6 +794,7 @@ class GridStrategy(Process):
                                     self.redisClient.blpopKey("{}_long_qty".format(self.token))
 
                             self.redisClient.setKey("{}_step_{}".format(self.token, self.direction), 0)
+                            self.redisClient.setKey("{}_avg_{}".format(self.token, self.direction), 0)
                             self.redisClient.setKey("{}_last_trade_price_{}".format(self.token, self.direction), 0.0)
                             self.redisClient.setKey("{}_lowest_price_{}".format(self.token, self.direction), 100000.0)
                             self.redisClient.setKey("{}_highest_price_{}".format(self.token, self.direction), 0.0)
@@ -807,7 +809,7 @@ class GridStrategy(Process):
                             # 最高处回调达到止盈位置则减仓一次
                             # 当盈利大于 0.00128 时就可以进行减仓所有
                             if float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) <= float(self.redisClient.getKey("{}_highest_price_{}".format(self.token, self.direction))) * (1 - (float(self.redisClient.getKey("{}_highest_price_{}".format(self.token, self.direction))) / float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) - 1) / 5):  # 重仓情形考虑回本平一半或平xx%的仓位, 待计算, 剩下依然重仓考虑吃多少点清仓
-                                self.logger.info('{}/{} 盈利平多 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
+                                self.logger.info('{}/{} 盈利平多全仓 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
 
                                 # 输出 Redis 数据内容
                                 _str_list = self.redisClient.getKeys("{}*{}".format(self.token, self.direction))
@@ -878,7 +880,7 @@ class GridStrategy(Process):
                                     # _env["CalculatedValue"] = float(self.redisClient.getKeys("{}_last_trade_price_{}".format(self.token, self.direction))) * (1 + self.add_rate * np.log(1 - int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction)))))
                                     self.logger.info(_env)
 
-                                    res_long = trade.open_order(self.symbol, 'BUY', [float(item) for item in self.redisClient.lrangeKey("{}_long_qty".format(self.token), 0, -1)][0], price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='LONG').json()
+                                    res_long = trade.open_order(self.symbol, 'BUY', float(self.redisClient.getKey("{}_position_size_{}".format(self.token, self.direction))), price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='LONG').json()
 
                                     if not 'orderId' in res_long.keys():
                                         if res_long['msg'] == 'Margin is insufficient.':
@@ -911,7 +913,7 @@ class GridStrategy(Process):
                         # elif int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction))) > 1 and float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) >= self.avg * (1 + 0.003):
                         elif int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction))) > 1 and self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction)) >= self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction)) * (1 + 0.003):
 
-                            self.logger.info('{}/{} 平最近一次加仓 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
+                            self.logger.info('{}/{} 平老单一次仓位 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
 
                             # 输出 Redis 数据内容
                             _str_list = self.redisClient.getKeys("{}*{}".format(self.token, self.direction))
@@ -940,9 +942,8 @@ class GridStrategy(Process):
                                 continue
                             else:
                                 self.redisClient.setKey('{}_orderId_{}_{}_{}'.format(self.token, res_long["orderId"], 'LONG', PublicModels.changeTimeNoTabs(time.time())), json.dumps(res_long))
-                                self.redisClient.blpopKey("{}_long_qty".format(self.token))
+                                nums = self.redisClient.brpopKey("{}_long_qty".format(self.token))
 
-                            nums = self.redisClient.brpopKey("{}_long_qty".format(self.token))
                             _win = (nums * (self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction)) - self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * (1 - 4e-4)) + self.redisClient.getKey("{}_win_{}".format(self.token, self.direction))
                             self.redisClient.setKey("{}_win_{}".format(self.token, self.direction), _win)
                             self.redisClient.setKey("{}_step_{}".format(self.token, self.direction), 1)
