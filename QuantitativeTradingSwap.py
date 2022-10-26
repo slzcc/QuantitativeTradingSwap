@@ -275,8 +275,6 @@ class GridStrategy(Process):
                                 value = self.redisClient.lrangeKey(item, 0, -1)
                                 _env[item] = value
 
-                            _env["condition"] = condition
-                            # _env["CalculatedValue"] = float(self.redisClient.getKeys("{}_last_trade_price_{}".format(self.token, self.direction))) * (1 + self.add_rate * np.log(1 - int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction)))))
                             self.logger.info(_env)
 
                             # 下单开空, 市价开单
@@ -660,8 +658,6 @@ class GridStrategy(Process):
                                 value = self.redisClient.lrangeKey(item, 0, -1)
                                 _env[item] = value
 
-                            _env["condition"] = condition
-                            # _env["CalculatedValue"] = float(self.redisClient.getKeys("{}_last_trade_price_{}".format(self.token, self.direction))) * (1 + self.add_rate * np.log(1 - int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction)))))
                             self.logger.info(_env)
 
                             # 下单开多
