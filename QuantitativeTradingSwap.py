@@ -254,7 +254,7 @@ class GridStrategy(Process):
                     # 判断当前价格 小于/等于 后 500 根 k 线的最小值
                     sell_condition2 = float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) <= max(price1m_high[-50:])
                     
-                    self.logger.info('{}/{} 下单预计 K 线判定区间: {} < {}(当前价格) < {}'.format(self.symbol, self.side, max(price1m_low[:50]), float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), max(price1m_high[-50:])))
+                    # self.logger.info('{}/{} 下单预计 K 线判定区间: {} < {}(当前价格) < {}'.format(self.symbol, self.side, max(price1m_low[:50]), float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), max(price1m_high[-50:])))
 
                     # 起始位置 0, 且没有开仓
                     if int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction))) == 0:
@@ -262,6 +262,22 @@ class GridStrategy(Process):
                         # 判断数据是否为空
                         if sell_condition1 and sell_condition2:
                             self.logger.info('{}/{} 下单开空, 下单数量 {}, 下单价格 {} {}'.format(self.symbol, self.side, self.redisClient.getKey("{}_position_size_{}".format(self.token, self.direction)), self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction)), PublicModels.changeTime(time.time())))
+
+                            # 输出 Redis 数据内容
+                            _str_list = self.redisClient.getKeys("{}*{}".format(self.token, self.direction))
+                            _qty_list = self.redisClient.getKeys("{}*qty".format(self.token))
+
+                            _env = {}
+                            for item in _str_list:
+                                value = self.redisClient.getKey(item)
+                                _env[item] = value
+                            for item in _qty_list:
+                                value = self.redisClient.lrangeKey(item, 0, -1)
+                                _env[item] = value
+
+                            _env["condition"] = condition
+                            # _env["CalculatedValue"] = float(self.redisClient.getKeys("{}_last_trade_price_{}".format(self.token, self.direction))) * (1 + self.add_rate * np.log(1 - int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction)))))
+                            self.logger.info(_env)
 
                             # 下单开空, 市价开单
                             res_short = trade.open_order(self.symbol, 'SELL', float(self.redisClient.getKey("{}_position_size_{}".format(self.token, self.direction))), price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='SHORT').json()
@@ -557,7 +573,7 @@ class GridStrategy(Process):
                                         PublicModels.changeTime(time.time())))
 
                         elif int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction))) < -1 and float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) <= float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * (1 - 0.003):
-                            self.logger.info('{}/{} 平老单一次加仓 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
+                            self.logger.info('{}/{} 平老单一次仓位 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
                             # 输出 Redis 数据内容
                             _str_list = self.redisClient.getKeys("{}*{}".format(self.token, self.direction))
                             _qty_list = self.redisClient.getKeys("{}*qty".format(self.token))
@@ -618,7 +634,7 @@ class GridStrategy(Process):
                     # 判断当前价格 小于/等于 前 100 根 k 线的最小值
                     buy_condition1 = float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) <= max(price1m_low[-20:])
                     
-                    self.logger.info('{}/{} 下单预计 K 线判定区间: {}(当前价格) < {}'.format(self.symbol, self.side, float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), max(price1m_low[-20:])))
+                    # self.logger.info('{}/{} 下单预计 K 线判定区间: {}(当前价格) < {}'.format(self.symbol, self.side, float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), max(price1m_low[-20:])))
 
                     # 当起始位为 0, 则没有任何开单
                     if int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction))) == 0:
@@ -631,6 +647,22 @@ class GridStrategy(Process):
                                 float(self.redisClient.getKey("{}_position_size_{}".format(self.token, self.direction))),
                                 float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))),
                                 PublicModels.changeTime(time.time())))
+
+                            # 输出 Redis 数据内容
+                            _str_list = self.redisClient.getKeys("{}*{}".format(self.token, self.direction))
+                            _qty_list = self.redisClient.getKeys("{}*qty".format(self.token))
+
+                            _env = {}
+                            for item in _str_list:
+                                value = self.redisClient.getKey(item)
+                                _env[item] = value
+                            for item in _qty_list:
+                                value = self.redisClient.lrangeKey(item, 0, -1)
+                                _env[item] = value
+
+                            _env["condition"] = condition
+                            # _env["CalculatedValue"] = float(self.redisClient.getKeys("{}_last_trade_price_{}".format(self.token, self.direction))) * (1 + self.add_rate * np.log(1 - int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction)))))
+                            self.logger.info(_env)
 
                             # 下单开多
                             res_long = trade.open_order(self.symbol, 'BUY', float(self.redisClient.getKey("{}_position_size_{}".format(self.token, self.direction))), price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='LONG').json()
