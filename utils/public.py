@@ -21,6 +21,10 @@ import re
 import types
 import os
 
+# 如果日志目录不存在进行创建
+if not os.path.exists('logs'):
+    os.mkdir('logs')
+
 # 创建日志器对象
 ######################################## Logging __name__ #######################################
 logger = logging.getLogger(__name__)
@@ -44,10 +48,6 @@ logger.addHandler(file_handler)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 console_handler.setFormatter(formatter)
 file_handler.setFormatter(formatter)
-
-# 如果日志目录不存在进行创建
-if not os.path.exists('logs'):
-    os.mkdir('logs')
             
 # request 异常方法处理, 解决 requests 异常错误直接退出的问题
 def PublicRequests(request={"url": "", "params": {}, "header": {}, "model": "GET", "timeout": 3, "verify": True, "proxies": {}}, recursive_abnormal={"recursive": 3, "count": 0, "alert_count": 3}):
