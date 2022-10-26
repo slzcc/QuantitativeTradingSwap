@@ -731,7 +731,7 @@ class GridStrategy(Process):
 
                         # 当前价格小于购买价格时的比例价格则进行 虚亏加仓
                         # 亏本达到 add_rate% * 持仓数量 时进行虚亏加仓, 判定值根据持仓单的数据进行上下浮动
-                        elif condition and float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) <= float(self.redisClient.getKey("{}_last_trade_price_{}".format(self.token, self.direction))) * (1 - self.add_rate * np.log(1 + self.redisClient.setKey("{}_step_{}".format(self.token, self.direction), 0))):
+                        elif condition and float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) <= float(self.redisClient.getKey("{}_last_trade_price_{}".format(self.token, self.direction))) * (1 - self.add_rate * np.log(1 + self.redisClient.getKey("{}_step_{}".format(self.token, self.direction), 0))):
                             _lowest_price = min(float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), float(self.redisClient.getKey("{}_lowest_price_{}".format(self.token, self.direction))))
                             self.redisClient.setKey("{}_lowest_price_{}".format(self.token, self.direction), _lowest_price)
                             if float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) >= float(self.redisClient.getKey("{}_lowest_price_{}".format(self.token, self.direction))) * (1 + (1 - float(self.redisClient.getKey("{}_lowest_price_{}".format(self.token, self.direction))) / float(self.redisClient.getKey("{}_last_trade_price_{}".format(self.token, self.direction)))) / 5):
