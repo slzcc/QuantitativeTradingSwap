@@ -24,8 +24,9 @@ elif API_TYPE == "BinanceTestNet":
     FUTURE_URL = "https://testnet.binancefuture.com"
     SPOT_URL = "https://testnet.binance.vision/api/v3"
 
-# binance 身份验证参数
-binance_recvWindow = 5000
+# binance 当前发送请求的有效毫秒数
+# https://binance-docs.github.io/apidocs/spot/en/#signed-trade-user_data-and-margin-endpoint-security
+binance_recvWindow = 10000
 
 # Request to Response Written to the log
 ResponseLog = False

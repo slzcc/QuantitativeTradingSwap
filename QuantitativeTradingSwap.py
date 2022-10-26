@@ -125,7 +125,6 @@ class GridStrategy(Process):
         self.name = symbol              # 开单名称
         self.symbol = symbol[:-1]       # 获取对币种进行切割如 ETHUSDT多 取 ETHUSDT
         self.side = symbol[-1]          # 获取对币种进行切割如 ETHUSDT多 取 多
-        self.t_start = time.time()      # 开始时间
         self.read_conf(symbol)
         self.direction = "LONG" if self.side == "多" else "SHORT"
 
@@ -166,7 +165,11 @@ class GridStrategy(Process):
         # 记录实盘最大仓位, 供后续参考
         if not self.redisClient.getKey("{}_max_position_{}".format(self.token, self.direction)):
             self.redisClient.setKey("{}_max_position_{}".format(self.token, self.direction), 0)
-        
+        # timestamp default
+        # 记录当前运行时间
+        if not self.redisClient.getKey("{}_t_start_{}".format(self.token, self.direction)):
+            self.redisClient.setKey("{}_t_start_{}".format(self.token, self.direction), time.time())
+
         # 如果日志目录不存在进行创建
         if not os.path.exists('logs'):
             os.mkdir('logs')
@@ -225,7 +228,7 @@ class GridStrategy(Process):
         # 调整开仓杠杆
         trade.set_leverage(self.symbol, self.position_times).json()
         # 设置当前启动时间
-        t_start = time.time()
+        self.redisClient.setKey("{}_t_start_{}".format(self.token, self.direction), time.time())
         self.logger.info('{}/{} U本位开始运行 \t {} \t #################'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
         while True:
             # try:
@@ -413,7 +416,7 @@ class GridStrategy(Process):
                                 sum([float(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)]) * (float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) - float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction)))), 
                                 float(self.redisClient.getKey("{}_win_{}".format(self.token, self.direction))), 
                                 float(self.redisClient.getKey("{}_max_position_{}".format(self.token, self.direction))), 
-                                (time.time() - self.t_start) / 3600, 
+                                (time.time() - float(self.redisClient.getKey("{}_t_start_{}".format(self.token, self.direction)))) / 3600, 
                                 PublicModels.changeTime(time.time())))
 
                     ## 如果仓位盈利且到达阀值后进行止盈平仓
@@ -514,7 +517,7 @@ class GridStrategy(Process):
                                 self.side,
                                 float(self.redisClient.getKey("{}_win_{}".format(self.token, self.direction))),
                                 float(self.redisClient.getKey("{}_max_position_{}".format(self.token, self.direction))),
-                                (time.time() - self.t_start) / 3600, PublicModels.changeTime(time.time())))
+                                (time.time() - float(self.redisClient.getKey("{}_t_start_{}".format(self.token, self.direction)))) / 3600, PublicModels.changeTime(time.time())))
 
                         else:
                             # 当前价格如果 大于 购买价格的 profit% 则进行浮盈加仓一次
@@ -567,7 +570,7 @@ class GridStrategy(Process):
                                     sum([float(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)]) * (float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) - float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction)))), 
                                     float(self.redisClient.getKey("{}_win_{}".format(self.token, self.direction))),
                                     float(self.redisClient.getKey("{}_max_position_{}".format(self.token, self.direction))), 
-                                    (time.time() - self.t_start) / 3600, 
+                                    (time.time() - float(self.redisClient.getKey("{}_t_start_{}".format(self.token, self.direction)))) / 3600, 
                                     PublicModels.changeTime(time.time())))
 
                     elif int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction))) < -1 and float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) <= float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * (1 - 0.003):
@@ -615,7 +618,7 @@ class GridStrategy(Process):
                             sum([float(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)]) * (float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) - float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction)))),
                             float(self.redisClient.getKey("{}_win_{}".format(self.token, self.direction))),
                             float(self.redisClient.getKey("{}_max_position_{}".format(self.token, self.direction))),
-                            (time.time() - self.t_start) / 3600,
+                            (time.time() - float(self.redisClient.getKey("{}_t_start_{}".format(self.token, self.direction)))) / 3600,
                             PublicModels.changeTime(time.time())))
 
             # 如果策略为开 多 时
@@ -780,7 +783,7 @@ class GridStrategy(Process):
                                 sum([float(item) for item in self.redisClient.lrangeKey("{}_long_qty".format(self.token), 0, -1)]) * (float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) - float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction)))),
                                 float(self.redisClient.getKey("{}_win_{}".format(self.token, self.direction))),
                                 float(self.redisClient.getKey("{}_max_position_{}".format(self.token, self.direction))),
-                                (time.time() - self.t_start) / 3600,
+                                (time.time() - float(self.redisClient.getKey("{}_t_start_{}".format(self.token, self.direction)))) / 3600,
                                 PublicModels.changeTime(time.time())))
 
                     elif (not condition) and float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) <= float(self.redisClient.getKey("{}_last_trade_price_{}".format(self.token, self.direction))) * (1 - self.add_rate * np.log(1 + int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction))))):
@@ -879,7 +882,7 @@ class GridStrategy(Process):
                                 self.side, 
                                 float(self.redisClient.getKey("{}_win_{}".format(self.token, self.direction))), 
                                 float(self.redisClient.getKey("{}_max_position_{}".format(self.token, self.direction))), 
-                                (time.time() - self.t_start) / 3600, 
+                                (time.time() - float(self.redisClient.getKey("{}_t_start_{}".format(self.token, self.direction)))) / 3600, 
                                 PublicModels.changeTime(time.time())))
 
                         else:
@@ -933,13 +936,12 @@ class GridStrategy(Process):
                                     sum([float(item) for item in self.redisClient.lrangeKey("{}_long_qty".format(self.token), 0, -1)]) * (float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) - float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction)))), 
                                     float(self.redisClient.getKey("{}_win_{}".format(self.token, self.direction))),
                                     float(self.redisClient.getKey("{}_max_position_{}".format(self.token, self.direction))), 
-                                    (time.time() - self.t_start) / 3600, 
+                                    (time.time() - float(self.redisClient.getKey("{}_t_start_{}".format(self.token, self.direction)))) / 3600, 
                                     PublicModels.changeTime(time.time())))
 
                     ## 止盈最近的一次开仓
                     ## 判断已经开单且 当前价格 >= 开单价格 * (1 + 0.003)
-                    # elif int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction))) > 1 and float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) >= self.avg * (1 + 0.003):
-                    elif int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction))) > 1 and self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction)) >= self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction)) * (1 + 0.003):
+                    elif int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction))) > 1 and float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) >= float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * (1 + 0.003):
 
                         self.logger.info('{}/{} 平老单一次仓位 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
 
@@ -987,7 +989,7 @@ class GridStrategy(Process):
                             sum([float(item) for item in self.redisClient.lrangeKey("{}_long_qty".format(self.token), 0, -1)]) * (float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) - float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction)))),
                             float(self.redisClient.getKey("{}_win_{}".format(self.token, self.direction))),
                             float(self.redisClient.getKey("{}_max_position_{}".format(self.token, self.direction))),
-                            (time.time() - self.t_start) / 3600,
+                            (time.time() - float(self.redisClient.getKey("{}_t_start_{}".format(self.token, self.direction)))) / 3600,
                             PublicModels.changeTime(time.time())))
 
             _max_position = max(
