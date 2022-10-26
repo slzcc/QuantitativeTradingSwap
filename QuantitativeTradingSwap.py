@@ -406,7 +406,7 @@ class GridStrategy(Process):
                             self.redisClient.setKey("{}_avg_{}".format(self.token, self.direction), _avg)
                             self.redisClient.setKey("{}_last_trade_price_{}".format(self.token, self.direction), float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))))
                             _win = ([float(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)][-1] * float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) * 4e-4) - float(self.redisClient.getKey("{}_win_{}".format(self.token, self.direction)))
-                            self.redisClient.setKey("{}_avg_{}".format(self.token, self.direction), _win)
+                            self.redisClient.setKey("{}_win_{}".format(self.token, self.direction), _win)
 
                             self.logger.info('%s/%s 当前仓位成本=%.1f, 均价=%.3f, 浮亏=%.2f, 已实现盈利=%.2f（最大持有量=%s, %.1f小时）\t%s' % (
                                 self.symbol, 
@@ -773,7 +773,7 @@ class GridStrategy(Process):
                             self.redisClient.setKey("{}_last_trade_price_{}".format(self.token, self.direction), float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))))
                             self.redisClient.setKey("{}_step_{}".format(self.token, self.direction), int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction))) + 1)
                             _win = ([float(item) for item in self.redisClient.lrangeKey("{}_long_qty".format(self.token), 0, -1)][-1] * float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) * 4e-4) - float(self.redisClient.getKey("{}_win_{}".format(self.token, self.direction)))
-                            self.redisClient.setKey("{}_avg_{}".format(self.token, self.direction), _win)
+                            self.redisClient.setKey("{}_win_{}".format(self.token, self.direction), _win)
 
                             self.logger.info('%s/%s 当前仓位成本=%.1f, 均价=%.3f, 浮亏=%.2f, 已实现盈利=%.2f（最大持有量=%s, %.1f小时）\t %s' % (
                                 self.symbol, 
