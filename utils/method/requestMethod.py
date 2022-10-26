@@ -31,10 +31,7 @@ def _Get(request={"url": "", "header": {}, "timeout": 3, "verify": True, "proxie
         return res
     except Exception as err:
         # 当前请求出现异常
-        if ResponseLog:
-            PublicModels.logger.info("Request Url: {}, Request Type: {}, Body: {}, Header: {}, Response: {}".format(request["url"], "GET", "", request["header"], res.json()))
-        else:
-            PublicModels.logger.info("Request Url: {}, Request Type: {}, Body: {}, Header: {}, Response: {}".format(request["url"], "GET", "", request["header"], "如需要查看修改 ResponseLog 值为 True"))
+        PublicModels.logger.info("Request Url: {}, Request Type: {}, Body: {}, Header: {}, Response: {}".format(request["url"], "GET", "", request["header"], "请求异常"))
         if recursive_abnormal["count"] >= recursive_abnormal["alert_count"]:
             recursive_abnormal["alert_count"] = recursive_abnormal["alert_count"] + 1
             # 当出现错误时，并达到 alert_count 数量进行处理
@@ -60,10 +57,7 @@ def _Post(request={"url": "", "params": {}, "header": {}, "timeout": 3, "verify"
         return res
     except Exception as err:
         # 当前请求出现异常
-        if ResponseLog:
-            PublicModels.logger.info("Request Url: {}, Request Type: {}, Body: {}, Header: {}, Response: {}".format(request["url"], "POST", "", request["params"], request["header"], res.json()))
-        else:
-            PublicModels.logger.info("Request Url: {}, Request Type: {}, Body: {}, Header: {}, Response: {}".format(request["url"], "POST", "", request["params"], request["header"], "如需要查看修改 ResponseLog 值为 True"))
+        PublicModels.logger.info("Request Url: {}, Request Type: {}, Body: {}, Header: {}, Response: {}".format(request["url"], "GET", "", request["header"], "请求异常"))
         if recursive_abnormal["count"] >= recursive_abnormal["alert_count"]:
             # 当出现错误时，并达到 alert_count 数量进行处理
             recursive_abnormal["alert_count"] = recursive_abnormal["alert_count"] + 1
@@ -89,10 +83,7 @@ def _Delete(request={"url": "", "params": {}, "header": {}, "timeout": 3, "verif
         return res
     except Exception as err:
         # 当前请求出现异常
-        if ResponseLog:
-            PublicModels.logger.info("Request Url: {}, Request Type: {}, Body: {}, Header: {}, Response: {}".format(request["url"], "POST", "", request["params"], request["header"], res.json()))
-        else:
-            PublicModels.logger.info("Request Url: {}, Request Type: {}, Body: {}, Header: {}, Response: {}".format(request["url"], "POST", "", request["params"], request["header"], "如需要查看修改 ResponseLog 值为 True"))
+        PublicModels.logger.info("Request Url: {}, Request Type: {}, Body: {}, Header: {}, Response: {}".format(request["url"], "GET", "", request["header"], "请求异常"))
         if recursive_abnormal["count"] >= recursive_abnormal["alert_count"]:
             # 当出现错误时，并达到 alert_count 数量进行处理
             recursive_abnormal["alert_count"] = recursive_abnormal["alert_count"] + 1
