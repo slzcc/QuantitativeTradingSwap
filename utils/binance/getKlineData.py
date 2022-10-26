@@ -28,7 +28,7 @@ def get_history_k(coin, typ, T='4h', limit=1000, start_time=None, end_time=None)
     :return: 直接返回接口完整历史k线数据，默认1000条
     '''
     if typ == 'spot':
-        url = '{}/api/v1/klines?symbol={}&interval={}&limit={}'.format(SPOT_URL, coin, T,limit)
+        url = '{}/api/v1/klines?symbol={}&interval={}&limit={}'.format(SPOT_URL, coin, T, limit)
         return PublicModels.PublicRequests(request={"model": "GET", "url": url, "timeout": 5, "verify": True, "proxies": PROXIES_DEFAULT_DATA}, recursive_abnormal={"recursive": 10, "count": 0, "alert_count": 10})
     else:
         if start_time and end_time:
@@ -41,7 +41,7 @@ def get_history_k(coin, typ, T='4h', limit=1000, start_time=None, end_time=None)
 def get_24hr():
     # 24小时U本位数据
     try:
-        res = PublicModels.PublicRequests(request={"model": "GET", "url": '{}/fapi/v1/ticker/24hr'.format(FUTURE_URL), "timeout": 5, "verify": True, "proxies": PROXIES_DEFAULT_DATA}, recursive_abnormal={"recursive": 10, "count": 0, "alert_count": 10}).json()
+        res = PublicModels.PublicRequests(request={"model": "GET", "url": '{}/fapi/v1/ticker/24hr'.format(FUTURE_URL), "timeout": 5, "verify": True, "proxies": PROXIES_DEFAULT_DATA}, recursive_abnormal={"recursive": 10, "count": 0, "alert_count": 10})
     except:
         res = {}
     return sorted([[i["symbol"],float(i["quoteVolume"]),float(i["lastPrice"]),i["volume"]] for i in res], key=lambda x:x[1], reverse=True)
@@ -49,7 +49,7 @@ def get_24hr():
 def long_short_ratio(coin,T):
     # 多空人数比，"5m","15m","30m","1h","2h","4h","6h","12h","1d"
     try:
-        res = PublicModels.PublicRequests(request={"model": "GET", "url": '{}/futures/data/globalLongShortAccountRatio?symbol={}&period={}&limit=500'.format(FUTURE_URL, coin, T), "timeout": 5, "verify": True, "proxies": PROXIES_DEFAULT_DATA}, recursive_abnormal={"recursive": 10, "count": 0, "alert_count": 10}).json()
+        res = PublicModels.PublicRequests(request={"model": "GET", "url": '{}/futures/data/globalLongShortAccountRatio?symbol={}&period={}&limit=500'.format(FUTURE_URL, coin, T), "timeout": 5, "verify": True, "proxies": PROXIES_DEFAULT_DATA}, recursive_abnormal={"recursive": 10, "count": 0, "alert_count": 10})
     except:
         res = {}
     return [float(i['longShortRatio']) for i in res]
@@ -57,7 +57,7 @@ def long_short_ratio(coin,T):
 def top_long_short_ratio(coin,T):
     # 大户持仓量多空比
     try:
-        res = PublicModels.PublicRequests(request={"model": "GET", "url": '{}/futures/data/topLongShortPositionRatio?symbol={}&period={}&limit=500'.format(FUTURE_URL, coin, T), "timeout": 5, "verify": True, "proxies": PROXIES_DEFAULT_DATA}, recursive_abnormal={"recursive": 10, "count": 0, "alert_count": 10}).json()
+        res = PublicModels.PublicRequests(request={"model": "GET", "url": '{}/futures/data/topLongShortPositionRatio?symbol={}&period={}&limit=500'.format(FUTURE_URL, coin, T), "timeout": 5, "verify": True, "proxies": PROXIES_DEFAULT_DATA}, recursive_abnormal={"recursive": 10, "count": 0, "alert_count": 10})
     except:
         res = {}
     return [float(i['longShortRatio']) for i in res]
