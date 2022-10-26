@@ -132,8 +132,8 @@ class GridStrategy(Process):
         # 初始化 Redis 默认数据
         # step default
         # 锚点位置数据
-        # if not self.redisClient.getKey("{}_step_{}".format(self.token, self.direction)):
-        #     self.redisClient.setKey("{}_step_{}".format(self.token, self.direction), 0)
+        if not self.redisClient.getKey("{}_step_{}".format(self.token, self.direction)):
+            self.redisClient.setKey("{}_step_{}".format(self.token, self.direction), 0)
         # win default
         # 记录止损值(值是购买U的数量)
         if not self.redisClient.getKey("{}_win_{}".format(self.token, self.direction)):
@@ -602,7 +602,7 @@ class GridStrategy(Process):
                             nums = self.redisClient.brpopKey("{}_short_qty".format(self.token))
                             _win = (nums * (self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction)) - self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * (1 - 4e-4)) + self.redisClient.getKey("{}_win_{}".format(self.token, self.direction))
                             self.redisClient.setKey("{}_win_{}".format(self.token, self.direction), _win)
-                            self.redisClient.setKey("{}_step_{}".format(self.token, self.direction), -1)
+                            self.redisClient.setKey("{}_step_{}".format(self.token, self.direction), int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction))) - -1)
                             self.redisClient.setKey("{}_highest_price_{}".format(self.token, self.direction), 0.0)
                             self.redisClient.setKey("{}_base_price_{}".format(self.token, self.direction), self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction)))
                             self.redisClient.setKey("{}_last_trade_price_{}".format(self.token, self.direction), self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction)))
@@ -671,7 +671,7 @@ class GridStrategy(Process):
                                 self.redisClient.setKey('{}_orderId_{}_{}_{}'.format(self.token, res_long["orderId"], 'LONG', PublicModels.changeTimeNoTabs(time.time())), json.dumps(res_long))
                                 self.redisClient.lpushKey("{}_long_qty".format(self.token), self.redisClient.getKey("{}_position_size_{}".format(self.token, self.direction)))
 
-                            self.redisClient.incrKey("{}_step_{}".format(self.token, self.direction))
+                            self.redisClient.setKey("{}_step_{}".format(self.token, self.direction), int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction))) + 1)
                             self.redisClient.setKey("{}_avg_{}".format(self.token, self.direction), self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction)))
                             self.redisClient.setKey("{}_base_price_{}".format(self.token, self.direction), self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction)))
                             self.redisClient.setKey("{}_last_trade_price_{}".format(self.token, self.direction), self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction)))
@@ -768,7 +768,7 @@ class GridStrategy(Process):
                                 _avg = (float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) + float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction)))) / 2
                                 self.redisClient.setKey("{}_avg_{}".format(self.token, self.direction), _avg)
                                 self.redisClient.setKey("{}_last_trade_price_{}".format(self.token, self.direction), float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))))
-                                self.redisClient.incrKey("{}_step_{}".format(self.token, self.direction))
+                                self.redisClient.setKey("{}_step_{}".format(self.token, self.direction), int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction))) + 1)
                                 _win = ([float(item) for item in self.redisClient.lrangeKey("{}_long_qty".format(self.token), 0, -1)][-1] * float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) * 4e-4) - float(self.redisClient.getKey("{}_win_{}".format(self.token, self.direction)))
                                 self.redisClient.setKey("{}_avg_{}".format(self.token, self.direction), _win)
 
@@ -974,7 +974,7 @@ class GridStrategy(Process):
 
                             _win = (nums * (self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction)) - self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * (1 - 4e-4)) + self.redisClient.getKey("{}_win_{}".format(self.token, self.direction))
                             self.redisClient.setKey("{}_win_{}".format(self.token, self.direction), _win)
-                            self.redisClient.setKey("{}_step_{}".format(self.token, self.direction), 1)
+                            self.redisClient.setKey("{}_step_{}".format(self.token, self.direction), int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction))) - 1)
                             self.redisClient.setKey("{}_lowest_price_{}".format(self.token, self.direction), 100000.0)
                             self.redisClient.setKey("{}_base_price_{}".format(self.token, self.direction), self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction)))
                             self.redisClient.setKey("{}_last_trade_price_{}".format(self.token, self.direction), self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction)))
