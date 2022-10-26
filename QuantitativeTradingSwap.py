@@ -132,8 +132,8 @@ class GridStrategy(Process):
         # 初始化 Redis 默认数据
         # step default
         # 锚点位置数据
-        if not self.redisClient.getKey("{}_step_{}".format(self.token, self.direction)):
-            self.redisClient.setKey("{}_step_{}".format(self.token, self.direction), 0)
+        # if not self.redisClient.getKey("{}_step_{}".format(self.token, self.direction)):
+        #     self.redisClient.setKey("{}_step_{}".format(self.token, self.direction), 0)
         # win default
         # 记录止损值(值是购买U的数量)
         if not self.redisClient.getKey("{}_win_{}".format(self.token, self.direction)):
