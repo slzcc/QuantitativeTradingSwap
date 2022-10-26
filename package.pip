@@ -3,3 +3,4 @@ requests
 matplotlib
 pandas
 redis
+PyDecimal
