@@ -15,6 +15,8 @@ import time
 from utils import public as PublicModels
 from conf.settings import *
 
+checkRequestHttpCode = [200, 400]
+
 # 子方法, 不能直接被调用
 def _Get(request={"url": "", "header": {}, "timeout": 3, "verify": True, "proxies": {}}, recursive_abnormal={"recursive": 3, "count": 0, "alert_count": 3}):
     """
@@ -24,14 +26,16 @@ def _Get(request={"url": "", "header": {}, "timeout": 3, "verify": True, "proxie
         request["header"] = {}
     try:
         res = requests.get(url=request["url"], headers=request["header"], timeout=request["timeout"], verify=request["verify"], proxies=request["proxies"])
+        if not res.status_code in checkRequestHttpCode:
+            raise AssertionError("请求站点状态码异常, 返回结果 {}".format(res.status_code))
         if ResponseLog:
-            PublicModels.logger.info("Request Url: {}, Request Type: {}, Body: {}, Header: {}, Response: {}".format(request["url"], "GET", "", request["header"], res.json()))
+            PublicModels.logger.info("Request Status: {}, Request Url: {}, Request Type: {}, Body: {}, Header: {}, Response: {}".format(res.status_code, request["url"], "GET", "", request["header"], res.text))
         else:
-            PublicModels.logger.info("Request Url: {}, Request Type: {}, Body: {}, Header: {}, Response: {}".format(request["url"], "GET", "", request["header"], "如需要查看修改 ResponseLog 值为 True"))
+            PublicModels.logger.info("Request Status: {}, Request Url: {}, Request Type: {}, Body: {}, Header: {}, Response: {}".format(res.status_code, request["url"], "GET", "", request["header"], "如需要查看修改 ResponseLog 值为 True"))
         return res
     except Exception as err:
         # 当前请求出现异常
-        PublicModels.logger.info("Request Url: {}, Request Type: {}, Body: {}, Header: {}, Response: {}".format(request["url"], "GET", "", request["header"], "请求异常"))
+        PublicModels.logger.info("Request Status: {}, Request Url: {}, Request Type: {}, Body: {}, Header: {}, Response: {}".format('"Context of Reference"', request["url"], "GET", "", request["header"], "异常请求错误 {}".format(err)))
         if recursive_abnormal["count"] >= recursive_abnormal["alert_count"]:
             recursive_abnormal["alert_count"] = recursive_abnormal["alert_count"] + 1
             # 当出现错误时，并达到 alert_count 数量进行处理
@@ -50,14 +54,16 @@ def _Post(request={"url": "", "params": {}, "header": {}, "timeout": 3, "verify"
         request["header"] = {}
     try:
         res = requests.post(url=request["url"], data=request["params"], headers=request["header"], timeout=request["timeout"], verify=request["verify"], proxies=request["proxies"])
+        if not res.status_code in checkRequestHttpCode:
+            raise AssertionError("请求站点状态码异常, 返回结果 {}".format(res.status_code))
         if ResponseLog:
-            PublicModels.logger.info("Request Url: {}, Request Type: {}, Body: {}, Header: {}, Response: {}".format(request["url"], "POST", "", request["params"], request["header"], res.json()))
+            PublicModels.logger.info("Request Status: {}, Request Url: {}, Request Type: {}, Body: {}, Header: {}, Response: {}".format(res.status_code, request["url"], "POST", "", request["params"], request["header"], res.text))
         else:
-            PublicModels.logger.info("Request Url: {}, Request Type: {}, Body: {}, Header: {}, Response: {}".format(request["url"], "POST", "", request["params"], request["header"], "如需要查看修改 ResponseLog 值为 True"))
+            PublicModels.logger.info("Request Status: {}, Request Url: {}, Request Type: {}, Body: {}, Header: {}, Response: {}".format(res.status_code, request["url"], "POST", "", request["params"], request["header"], "如需要查看修改 ResponseLog 值为 True"))
         return res
     except Exception as err:
         # 当前请求出现异常
-        PublicModels.logger.info("Request Url: {}, Request Type: {}, Body: {}, Header: {}, Response: {}".format(request["url"], "GET", "", request["header"], "请求异常"))
+        PublicModels.logger.info("Request Status: {}, Request Url: {}, Request Type: {}, Body: {}, Header: {}, Response: {}".format('"Context of Reference"', request["url"], "POST", "", request["header"], "异常请求错误 {}".format(err)))
         if recursive_abnormal["count"] >= recursive_abnormal["alert_count"]:
             # 当出现错误时，并达到 alert_count 数量进行处理
             recursive_abnormal["alert_count"] = recursive_abnormal["alert_count"] + 1
@@ -76,14 +82,16 @@ def _Delete(request={"url": "", "params": {}, "header": {}, "timeout": 3, "verif
         request["header"] = {}
     try:
         res = requests.delete(url=request["url"], data=request["params"], headers=request["header"], timeout=request["timeout"], verify=request["verify"], proxies=request["proxies"])
+        if not res.status_code in checkRequestHttpCode:
+            raise AssertionError("请求站点状态码异常, 返回结果 {}".format(res.status_code))
         if ResponseLog:
-            PublicModels.logger.info("Request Url: {}, Request Type: {}, Body: {}, Header: {}, Response: {}".format(request["url"], "POST", "", request["params"], request["header"], res.json()))
+            PublicModels.logger.info("Request Status: {}, Request Url: {}, Request Type: {}, Body: {}, Header: {}, Response: {}".format(res.status_code, request["url"], "DELETE", "", request["params"], request["header"], res.text))
         else:
-            PublicModels.logger.info("Request Url: {}, Request Type: {}, Body: {}, Header: {}, Response: {}".format(request["url"], "POST", "", request["params"], request["header"], "如需要查看修改 ResponseLog 值为 True"))
+            PublicModels.logger.info("Request Status: {}, Request Url: {}, Request Type: {}, Body: {}, Header: {}, Response: {}".format(res.status_code, request["url"], "DELETE", "", request["params"], request["header"], "如需要查看修改 ResponseLog 值为 True"))
         return res
     except Exception as err:
         # 当前请求出现异常
-        PublicModels.logger.info("Request Url: {}, Request Type: {}, Body: {}, Header: {}, Response: {}".format(request["url"], "GET", "", request["header"], "请求异常"))
+        PublicModels.logger.info("Request Status: {}, Request Url: {}, Request Type: {}, Body: {}, Header: {}, Response: {}".format('"Context of Reference"', request["url"], "DELETE", "", request["header"], "异常请求错误 {}".format(err)))
         if recursive_abnormal["count"] >= recursive_abnormal["alert_count"]:
             # 当出现错误时，并达到 alert_count 数量进行处理
             recursive_abnormal["alert_count"] = recursive_abnormal["alert_count"] + 1
