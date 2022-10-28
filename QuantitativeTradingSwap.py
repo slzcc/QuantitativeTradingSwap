@@ -473,7 +473,7 @@ class GridStrategy(Process):
                             self.logger.info('{}/{} 平空止损 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
 
                             if int(self.redisClient.llenKey("{}_real_short_qty".format(self.token))) == 0:
-                                self.logger.info('%s/%s 平多止损失败, 没有仓位可平  \t %s \t %s' % (self.symbol, self.side, PublicModels.changeTime(time.time())))
+                                self.logger.info('%s/%s 平多止损失败, 没有仓位可平 \t %s' % (self.symbol, self.side, PublicModels.changeTime(time.time())))
                                 continue
 
                             if int(self.redisClient.llenKey("{}_short_qty".format(self.token))) > int(self.redisClient.llenKey("{}_real_short_qty".format(self.token))):
@@ -574,7 +574,7 @@ class GridStrategy(Process):
                             self.logger.info('{}/{} 重新开始下一轮 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
 
                             if int(self.redisClient.llenKey("{}_real_short_qty".format(self.token))) == 0:
-                                self.logger.info('%s/%s 重新开始下一轮失败, 没有仓位可平  \t %s \t %s' % (self.symbol, self.side, PublicModels.changeTime(time.time())))
+                                self.logger.info('%s/%s 重新开始下一轮失败, 没有仓位可平 \t %s' % (self.symbol, self.side, PublicModels.changeTime(time.time())))
                                 continue
 
                             if int(self.redisClient.llenKey("{}_short_qty".format(self.token))) > int(self.redisClient.llenKey("{}_real_short_qty".format(self.token))):
@@ -657,7 +657,7 @@ class GridStrategy(Process):
                                 self.logger.info('{}/{} 盈利平空全仓 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
 
                                 if int(self.redisClient.llenKey("{}_real_short_qty".format(self.token))) == 0:
-                                    self.logger.info('%s/%s 盈利平空全仓失败, 没有仓位可平  \t %s \t %s' % (self.symbol, self.side, PublicModels.changeTime(time.time())))
+                                    self.logger.info('%s/%s 盈利平空全仓失败, 没有仓位可平 \t %s' % (self.symbol, self.side, PublicModels.changeTime(time.time())))
                                     continue
 
                                 if int(self.redisClient.llenKey("{}_short_qty".format(self.token))) > int(self.redisClient.llenKey("{}_real_short_qty".format(self.token))):
@@ -760,7 +760,7 @@ class GridStrategy(Process):
                             self.logger.info('{}/{} 平老单一次仓位 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
 
                             if int(self.redisClient.llenKey("{}_real_short_qty".format(self.token))) == 0:
-                                self.logger.info('%s/%s 平老单一次仓位失败, 没有仓位可平  \t %s \t %s' % (self.symbol, self.side, PublicModels.changeTime(time.time())))
+                                self.logger.info('%s/%s 平老单一次仓位失败, 没有仓位可平 \t %s' % (self.symbol, self.side, PublicModels.changeTime(time.time())))
                                 continue
 
                             # 下单平仓
@@ -861,7 +861,7 @@ class GridStrategy(Process):
                             self.logger.info('{}/{} 平多止损 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
 
                             if int(self.redisClient.llenKey("{}_real_long_qty".format(self.token))) == 0:
-                                self.logger.info('%s/%s 平多失败, 没有仓位可平  \t %s \t %s' % (self.symbol, self.side, PublicModels.changeTime(time.time())))
+                                self.logger.info('%s/%s 平多失败, 没有仓位可平 \t %s' % (self.symbol, self.side, PublicModels.changeTime(time.time())))
                                 continue
 
                             if int(self.redisClient.llenKey("{}_long_qty".format(self.token))) > int(self.redisClient.llenKey("{}_real_long_qty".format(self.token))):
@@ -953,7 +953,7 @@ class GridStrategy(Process):
                             self.logger.info('{}/{} 重新开始下一轮 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
 
                             if int(self.redisClient.llenKey("{}_real_long_qty".format(self.token))) == 0:
-                                self.logger.info('%s/%s 重新开始下一轮失败, 没有仓位可平  \t %s \t %s' % (self.symbol, self.side, PublicModels.changeTime(time.time())))
+                                self.logger.info('%s/%s 重新开始下一轮失败, 没有仓位可平 \t %s' % (self.symbol, self.side, PublicModels.changeTime(time.time())))
                                 continue
 
                             if int(self.redisClient.llenKey("{}_long_qty".format(self.token))) > int(self.redisClient.llenKey("{}_real_long_qty".format(self.token))):
@@ -1036,7 +1036,7 @@ class GridStrategy(Process):
                                 self.logger.info('{}/{} 盈利平多全仓 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
 
                                 if int(self.redisClient.llenKey("{}_real_long_qty".format(self.token))) == 0:
-                                    self.logger.info('%s/%s 盈利平多全仓失败, 没有仓位可平  \t %s \t %s' % (self.symbol, self.side, PublicModels.changeTime(time.time())))
+                                    self.logger.info('%s/%s 盈利平多全仓失败, 没有仓位可平 \t %s' % (self.symbol, self.side, PublicModels.changeTime(time.time())))
                                     continue
 
                                 if int(self.redisClient.llenKey("{}_long_qty".format(self.token))) > int(self.redisClient.llenKey("{}_real_long_qty".format(self.token))):
@@ -1140,7 +1140,7 @@ class GridStrategy(Process):
                             self.logger.info('{}/{} 平老单一次仓位 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
 
                             if int(self.redisClient.llenKey("{}_real_long_qty".format(self.token))) == 0:
-                                self.logger.info('%s/%s 平老单一次仓位失败, 没有仓位可平  \t %s \t %s' % (self.symbol, self.side, PublicModels.changeTime(time.time())))
+                                self.logger.info('%s/%s 平老单一次仓位失败, 没有仓位可平 \t %s' % (self.symbol, self.side, PublicModels.changeTime(time.time())))
                                 continue
 
                             res_long = trade.open_order(self.symbol, 'SELL', [float(item) for item in self.redisClient.lrangeKey("{}_long_qty".format(self.token), 0, -1)][-1], price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='LONG').json()
