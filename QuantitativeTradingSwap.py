@@ -726,15 +726,14 @@ class GridStrategy(Process):
                                             self.logger.info('%s/%s 浮盈加仓失败 \t %s \t %s'%(self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
                                         continue
                                     else:
-                                        if float(self.redisClient.getKey("{}_base_price_{}".format(self.token, self.direction))) < float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))):
-                                            self.redisClient.setKey("{}_avg_{}".format(self.token, self.direction), self.redisClient.getKey("{}_avg_tmp_{}".format(self.token, self.direction)))
-
                                         self.redisClient.setKey('{}_orderId_{}_{}_{}'.format(self.token, res_short["orderId"], 'SHORT', PublicModels.changeTimeNoTabs(time.time())), json.dumps(res_short))
                                         self.redisClient.lpushKey("{}_short_qty".format(self.token), self.redisClient.getKey("{}_position_size_{}".format(self.token, self.direction)))
-                                        # 计算开单均价
-                                        _avg_tmp = (float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * sum([float(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)]) / [float(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)][0] + float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction)))) / (sum([float(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)]) / [float(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)][0] + 1)
-                                        self.redisClient.setKey("{}_avg_tmp_{}".format(self.token, self.direction), _avg_tmp)
 
+                                    if float(self.redisClient.getKey("{}_base_price_{}".format(self.token, self.direction))) < float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))):
+                                        self.redisClient.setKey("{}_avg_{}".format(self.token, self.direction), self.redisClient.getKey("{}_avg_tmp_{}".format(self.token, self.direction)))
+                                    # 计算开单均价
+                                    _avg_tmp = (float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * sum([float(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)]) / [float(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)][0] + float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction)))) / (sum([float(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)]) / [float(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)][0] + 1)
+                                    self.redisClient.setKey("{}_avg_tmp_{}".format(self.token, self.direction), _avg_tmp)
                                     self.redisClient.decrKey("{}_step_{}".format(self.token, self.direction))
                                     _base_price = (1 - self.profit) * float(self.redisClient.getKey("{}_base_price_{}".format(self.token, self.direction)))
                                     self.redisClient.setKey("{}_base_price_{}".format(self.token, self.direction), _base_price)
@@ -1105,12 +1104,12 @@ class GridStrategy(Process):
                                     else:
                                         self.redisClient.setKey('{}_orderId_{}_{}_{}'.format(self.token, res_long["orderId"], 'LONG', PublicModels.changeTimeNoTabs(time.time())), json.dumps(res_long))
                                         self.redisClient.lpushKey("{}_long_qty".format(self.token), self.redisClient.getKey("{}_position_size_{}".format(self.token, self.direction)))
-                                        # 计算开单均价
-                                        _avg_tmp = (float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * sum([float(item) for item in self.redisClient.lrangeKey("{}_long_qty".format(self.token), 0, -1)]) / [float(item) for item in self.redisClient.lrangeKey("{}_long_qty".format(self.token), 0, -1)][0] + float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction)))) / (sum([float(item) for item in self.redisClient.lrangeKey("{}_long_qty".format(self.token), 0, -1)]) / [float(item) for item in self.redisClient.lrangeKey("{}_long_qty".format(self.token), 0, -1)][0] + 1)
-                                        self.redisClient.setKey("{}_avg_tmp_{}".format(self.token, self.direction), _avg_tmp)
-
+                                        
                                     if float(self.redisClient.getKey("{}_base_price_{}".format(self.token, self.direction))) > float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))):
                                         self.redisClient.setKey("{}_avg_{}".format(self.token, self.direction), self.redisClient.getKey("{}_avg_tmp_{}".format(self.token, self.direction)))
+                                    # 计算开单均价
+                                    _avg_tmp = (float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * sum([float(item) for item in self.redisClient.lrangeKey("{}_long_qty".format(self.token), 0, -1)]) / [float(item) for item in self.redisClient.lrangeKey("{}_long_qty".format(self.token), 0, -1)][0] + float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction)))) / (sum([float(item) for item in self.redisClient.lrangeKey("{}_long_qty".format(self.token), 0, -1)]) / [float(item) for item in self.redisClient.lrangeKey("{}_long_qty".format(self.token), 0, -1)][0] + 1)
+                                    self.redisClient.setKey("{}_avg_tmp_{}".format(self.token, self.direction), _avg_tmp)
 
                                     _base_price = (1 + self.profit) * float(self.redisClient.getKey("{}_base_price_{}".format(self.token, self.direction)))
                                     self.redisClient.setKey("{}_base_price_{}".format(self.token, self.direction), _base_price)
