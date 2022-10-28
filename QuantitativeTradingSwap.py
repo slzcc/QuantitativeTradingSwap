@@ -411,8 +411,6 @@ class GridStrategy(Process):
 
                     sell_condition1 = float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) >= (min(price1m_low[-5:]) + max(price1m_high[-5:])) / 2
 
-                    self.logger.info('{}/{} 下单预计 K 线判定区间: {} < {}(当前价格)'.format(self.symbol, self.side, min(price1m_low[:50]), float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction)))))
-
                     # 起始位置 0, 且没有开仓
                     if int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction))) == 0:
 
@@ -701,13 +699,12 @@ class GridStrategy(Process):
                                     float(self.redisClient.getKey("{}_max_position_{}".format(self.token, self.direction))),
                                     (time.time() - float(self.redisClient.getKey("{}_t_start_{}".format(self.token, self.direction)))) / 3600, PublicModels.changeTime(time.time())))
 
-
                                 _env = checkRedisKeyValues(self.redisClient, self.token, self.direction, condition)
                                 self.logger.info(_env)
 
                             # 当前浮盈加仓又 Bug 当价格被拉低时则会使用超低价格购入
                             # ex: 20002.0 <= 20598.0 * (1 - 0.6 / 100)
-                            elif not condition:
+                            elif condition:
                                 # 当前价格如果 大于 购买价格的 profit% 则进行浮盈加仓一次
                                 if float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) <= float(self.redisClient.getKey("{}_base_price_{}".format(self.token, self.direction))) * (1 - self.profit):
 
@@ -803,8 +800,6 @@ class GridStrategy(Process):
                     # 判断当前价格 小于/等于 前 100 根 k 线的最小值
                     buy_condition1 = float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) <= (min(price1m_low[-5:]) + max(price1m_high[-5:])) / 2
                     
-                    self.logger.info('{}/{} 下单预计 K 线判定区间: {}(当前价格) < {}'.format(self.symbol, self.side, float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), (min(price1m_low[-5:]) + max(price1m_high[-5:])) / 2))
-
                     # 当起始位为 0, 则没有任何开单
                     if int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction))) == 0:
 
@@ -1080,7 +1075,7 @@ class GridStrategy(Process):
                                 _env = checkRedisKeyValues(self.redisClient, self.token, self.direction, condition)
                                 self.logger.info(_env)
 
-                            elif not condition:
+                            elif condition:
                                 # 当前价格如果 大于 购买价格的 profit% 则进行浮盈加仓一次
                                 if float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) >= float(self.redisClient.getKey("{}_base_price_{}".format(self.token, self.direction))) * (1 + self.profit):
 
