@@ -368,7 +368,7 @@ class GridStrategy(Process):
         self.redisClient.setKey("{}_t_start_{}".format(self.token, self.direction), time.time())
         self.logger.info('{}/{} U本位开始运行 \t {} \t #################'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
         while True:
-            # try:
+            try:
                 # 获取 1m 时间的 k 线
                 # Docs https://binance-docs.github.io/apidocs/spot/cn/#k
                 """
@@ -1183,8 +1183,8 @@ class GridStrategy(Process):
                 
                 self.redisClient.setKey("{}_max_position_{}".format(self.token, self.direction), _max_position)
                     
-            # except Exception as err:
-            #     self.logger.error("异常错误 {} 已忽略 {}".format(err, PublicModels.changeTime(time.time())))
+            except Exception as err:
+                self.logger.error("异常错误 {} 已忽略 {}".format(err, PublicModels.changeTime(time.time())))
 
 if __name__ == '__main__':
     args = command_line_args(sys.argv[1:])
