@@ -707,7 +707,7 @@ class GridStrategy(Process):
 
                             # 当前浮盈加仓又 Bug 当价格被拉低时则会使用超低价格购入
                             # ex: 20002.0 <= 20598.0 * (1 - 0.6 / 100)
-                            else:
+                            elif not condition:
                                 # 当前价格如果 大于 购买价格的 profit% 则进行浮盈加仓一次
                                 if float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) <= float(self.redisClient.getKey("{}_base_price_{}".format(self.token, self.direction))) * (1 - self.profit):
 
@@ -907,7 +907,6 @@ class GridStrategy(Process):
                                 self.logger.info('{}/{} 虚亏加仓 {} {}'.format(self.symbol, self.side, float(sum([Decimal(item) for item in self.redisClient.lrangeKey("{}_long_qty".format(self.token), 0, -1)])), PublicModels.changeTime(time.time())))
 
                                 res_long = trade.open_order(self.symbol, 'BUY', float(sum([Decimal(item) for item in self.redisClient.lrangeKey("{}_long_qty".format(self.token), 0, -1)])), price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='LONG').json()
-
                                 if not 'orderId' in res_long.keys():
                                     if res_long['msg'] == 'Margin is insufficient.':
                                         self.logger.info('%s/%s 虚亏加仓失败, 可用金不足 \t %s \t %s' % (self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
@@ -1081,7 +1080,7 @@ class GridStrategy(Process):
                                 _env = checkRedisKeyValues(self.redisClient, self.token, self.direction, condition)
                                 self.logger.info(_env)
 
-                            else:
+                            elif not condition:
                                 # 当前价格如果 大于 购买价格的 profit% 则进行浮盈加仓一次
                                 if float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) >= float(self.redisClient.getKey("{}_base_price_{}".format(self.token, self.direction))) * (1 + self.profit):
 
