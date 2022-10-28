@@ -240,7 +240,7 @@ def globalSetOrderIDStatus(symbol, key, secret, token):
             logger.error("订单操作异常 {}".format(err))
 
 class GridStrategy(Process):
-    def __init__(self, symbol, key, secret, token):
+    def __init__(self, symbol, key, secret, token, market=False):
         """
         :param symbol: BTCUSDT多
         :param key   : AccessKey
@@ -750,7 +750,7 @@ class GridStrategy(Process):
                                     _env = checkRedisKeyValues(self.redisClient, self.token, self.direction, condition)
                                     self.logger.info(_env)
 
-                        elif int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction))) < -1 and float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) <= float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * (1 - 0.003):
+                        elif int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction))) <= -1 and float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) <= float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * (1 - 0.003):
                             self.logger.info('{}/{} 平老单一次仓位 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
 
                             if int(self.redisClient.llenKey("{}_real_short_qty".format(self.token))) == 0:
@@ -1125,7 +1125,7 @@ class GridStrategy(Process):
 
                         ## 止盈最近的一次开仓
                         ## 判断已经开单且 当前价格 >= 开单价格 * (1 + 0.003)
-                        elif int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction))) > 1 and float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) >= float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * (1 + 0.003):
+                        elif int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction))) >= 1 and float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) >= float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * (1 + 0.003):
 
                             self.logger.info('{}/{} 平老单一次仓位 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
 
