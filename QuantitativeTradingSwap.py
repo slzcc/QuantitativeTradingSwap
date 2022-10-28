@@ -130,7 +130,6 @@ def longOrderUndo(logger, symbol, token, direction, orderInfo, timestamp=1800, r
                             redisClient.incrKey("{}_orderCheckId_{}_delay_destruction_{}".format(token, orderInfo["orderId"], direction))
         return False
 
-
 def globalSetOrderIDStatus(symbol, key, secret, token):
     """
     循环 Redis key 数据
@@ -409,12 +408,8 @@ class GridStrategy(Process):
                     self.logger.info('{}/{} U本位合约正在运行, 当前价格 {} , 已购买币种总数 {} , 已经下单总次数 {} , 锚点位置 {} \t {}'.format(
                         self.symbol, self.side, float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), sum([float(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)]), len([float(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)]), int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction))), PublicModels.changeTime(time.time())))
 
-                    # 判断当前价格 大于/等于 前 500 根 k 线的最大值
                     sell_condition1 = float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) >= (min(price1m_low[-5:]) + max(price1m_high[-5:])) / 2
-                    # # 判断当前价格 小于/等于 后 500 根 k 线的最小值
-                    # sell_condition2 = float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) <= max(price1m_high[-50:])
 
-                    # self.logger.info('{}/{} 下单预计 K 线判定区间: {} < {}(当前价格) < {}'.format(self.symbol, self.side, max(price1m_low[:50]), float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), max(price1m_high[-50:])))
                     self.logger.info('{}/{} 下单预计 K 线判定区间: {} < {}(当前价格)'.format(self.symbol, self.side, min(price1m_low[:50]), float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction)))))
 
                     # 起始位置 0, 且没有开仓
@@ -465,7 +460,7 @@ class GridStrategy(Process):
                     elif int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction))) < 0:
                         # 判断是否可以继续下单，返回布尔值
                         # 开仓总币价 / 每单币价 < 开仓数量
-                        condition = sum([float(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)]) / self.min_qty < self.max_add_times
+                        condition = sum([float(item) for item in self.redisClient.lrangeKey("{}_real_short_qty".format(self.token), 0, -1)]) / self.min_qty < self.max_add_times
                         # 判断 仓位 是否需要进行止损(全仓平仓)
                         ## 判断 亏损 && (是否可以继续开仓) && 当前价格 大于等于 准备出售价格 乘以 (1 + 1.2 * 开仓数量比例值) ep: 19700.0 * (1 + 1.2 * np.log(1 - -1))
                         ## 主要判断亏损如果超过范围则进行止损平仓（开仓数量到达上限）
@@ -734,11 +729,11 @@ class GridStrategy(Process):
                                     # 计算开单均价
                                     _avg_tmp = (float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * sum([float(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)]) / [float(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)][0] + float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction)))) / (sum([float(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)]) / [float(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)][0] + 1)
                                     self.redisClient.setKey("{}_avg_tmp_{}".format(self.token, self.direction), _avg_tmp)
-                                    self.redisClient.decrKey("{}_step_{}".format(self.token, self.direction))
                                     _base_price = (1 - self.profit) * float(self.redisClient.getKey("{}_base_price_{}".format(self.token, self.direction)))
                                     self.redisClient.setKey("{}_base_price_{}".format(self.token, self.direction), _base_price)
                                     _win = ([float(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)][-1] * float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) * 4e-4) - float(self.redisClient.getKey("{}_win_{}".format(self.token, self.direction)))
                                     self.redisClient.setKey("{}_win_{}".format(self.token, self.direction), _win)
+                                    self.redisClient.decrKey("{}_step_{}".format(self.token, self.direction))
 
                                     self.logger.info('%s/%s 当前仓位成本=%.1f, 均价=%.3f, 浮盈=%.2f, 已实现盈利=%.2f（最大持有量=%s, %.1f小时）\t %s' % (
                                         self.symbol, 
@@ -853,7 +848,7 @@ class GridStrategy(Process):
                     # 判断起始位大于 0, 至少开过一次仓
                     elif int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction))) > 0:
                         # 判断当前 开单数量 是否小于 最大可开单值
-                        condition = sum([float(item) for item in self.redisClient.lrangeKey("{}_long_qty".format(self.token), 0, -1)]) / self.min_qty < self.max_add_times
+                        condition = sum([float(item) for item in self.redisClient.lrangeKey("{}_real_long_qty".format(self.token), 0, -1)]) / self.min_qty < self.max_add_times
                         # 判断 没有亏损 && (not 开单数量上限) && 当前价格 小于等于 最新下单价格 * (1 - 容忍爆仓率 * 持仓数量比)
                         if self.if_loss and (not condition) and float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) <= float(self.redisClient.getKey("{}_last_trade_price_{}".format(self.token, self.direction))) * (1 - self.add_rate * np.log(1 + int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction))))):
                             self.logger.info('{}/{} 平多止损 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
