@@ -207,7 +207,7 @@ class GridStrategy(Process):
                     self.logger.info('{}/{} U本位合约正在运行, 当前价格 {} , 已购买币种总数 {} , 已经下单总次数 {} , 锚点位置 {} \t {}'.format(
                         self.symbol, self.side, float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), float(sum([Decimal(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)])), len([float(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)]), int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction))), PublicModels.changeTime(time.time())))
 
-                    sell_condition1 = float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) >= (min(price1m_low[-5:]) + max(price1m_high[-5:])) / 2
+                    sell_condition1 = float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) >= (min(price1m_low[-3:]) + max(price1m_high[-3:])) / 2
 
                     # 起始位置 0, 且没有开仓
                     if int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction))) == 0:
@@ -611,7 +611,7 @@ class GridStrategy(Process):
                         PublicModels.changeTime(time.time())))
 
                     # 判断当前价格 小于/等于 前 100 根 k 线的最小值
-                    buy_condition1 = float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) <= (min(price1m_low[-5:]) + max(price1m_high[-5:])) / 2
+                    buy_condition1 = float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) <= (min(price1m_low[-3:]) + max(price1m_high[-3:])) / 2
                     
                     # 当起始位为 0, 则没有任何开单
                     if int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction))) == 0:
