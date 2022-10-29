@@ -326,6 +326,10 @@ class GridStrategy(Process):
         # 记录当前运行时间
         if not self.redisClient.getKey("{}_t_start_{}".format(self.token, self.direction)):
             self.redisClient.setKey("{}_t_start_{}".format(self.token, self.direction), time.time())
+        # _last_order_time_ default
+        # 记录上一次下单时间
+        if not self.redisClient.getKey("{}_last_order_time_{}".format(self.token, self.direction)):
+            self.redisClient.setKey("{}_last_order_time_{}".format(self.token, self.direction), 0)
 
         # 如果日志目录不存在进行创建
         if not os.path.exists('logs'):
@@ -370,6 +374,7 @@ class GridStrategy(Process):
         self.T = arg_data['T']
         self.position_times = arg_data['position_times']
         self.if_loss = arg_data['if_loss']
+        self.order_interval = arg_data['order_interval']
 
     def run(self):
         # 获取一个 Binance API 对象
@@ -436,6 +441,10 @@ class GridStrategy(Process):
 
                         # 判断数据是否为空
                         if sell_condition1:
+                            # 判断上一次下单间隔, 如果未到达跳出当前判断
+                            if time.time() - float(self.redisClient.getKey("{}_last_order_time_{}".format(self.token, self.direction))) < self.order_interval:
+                                continue
+
                             self.logger.info('{}/{} 下单开空, 下单数量 {}, 下单价格 {} {}'.format(self.symbol, self.side, self.redisClient.getKey("{}_position_size_{}".format(self.token, self.direction)), self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction)), PublicModels.changeTime(time.time())))
 
                             # 下单开空, 市价开单
@@ -449,6 +458,7 @@ class GridStrategy(Process):
                                 self.redisClient.setKey('{}_orderId_{}_{}_{}'.format(self.token, res_short["orderId"], 'SHORT', PublicModels.changeTimeNoTabs(time.time())), json.dumps(res_short))
                                 # 记录购买数量到 buy_qty 列表中
                                 self.redisClient.lpushKey("{}_short_qty".format(self.token), self.redisClient.getKey("{}_position_size_{}".format(self.token, self.direction)))
+                                self.redisClient.setKey("{}_last_order_time_{}".format(self.token, self.direction), time.time())
 
                             # 锚点计数开空 -1
                             self.redisClient.decrKey("{}_step_{}".format(self.token, self.direction))
@@ -540,6 +550,10 @@ class GridStrategy(Process):
                         ## 20598.0 >= 20498.0 * (1 + 0.006 * np.log(1 + 1))
                         elif condition and float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) >= float(self.redisClient.getKey("{}_last_trade_price_{}".format(self.token, self.direction))) * (1 + self.add_rate * np.log(1 - int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction))))):
 
+                            # 判断上一次下单间隔, 如果未到达跳出当前判断
+                            if time.time() - float(self.redisClient.getKey("{}_last_order_time_{}".format(self.token, self.direction))) < self.order_interval:
+                                continue
+
                             if float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) <= float(self.redisClient.getKey("{}_highest_price_{}".format(self.token, self.direction))) * (1 - (float(self.redisClient.getKey("{}_highest_price_{}".format(self.token, self.direction))) / float(self.redisClient.getKey("{}_last_trade_price_{}".format(self.token, self.direction))) - 1) / 5):
                                 self.logger.info('{}/{} 虚亏加仓 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
 
@@ -556,6 +570,7 @@ class GridStrategy(Process):
                                 else:
                                     self.redisClient.setKey('{}_orderId_{}_{}_{}'.format(self.token, res_short["orderId"], 'SHORT', PublicModels.changeTimeNoTabs(time.time())), json.dumps(res_short))
                                     self.redisClient.lpushKey("{}_short_qty".format(self.token), float(sum([Decimal(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)])))
+                                    self.redisClient.setKey("{}_last_order_time_{}".format(self.token, self.direction), time.time())
 
                                 _highest_price = max(float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), float(self.redisClient.getKey("{}_highest_price_{}".format(self.token, self.direction))))
                                 self.redisClient.setKey("{}_highest_price_{}".format(self.token, self.direction), _highest_price)
@@ -728,6 +743,10 @@ class GridStrategy(Process):
                                 # 当前价格如果 大于 购买价格的 profit% 则进行浮盈加仓一次
                                 if float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) <= float(self.redisClient.getKey("{}_base_price_{}".format(self.token, self.direction))) * (1 - self.profit):
 
+                                    # 判断上一次下单间隔, 如果未到达跳出当前判断
+                                    if time.time() - float(self.redisClient.getKey("{}_last_order_time_{}".format(self.token, self.direction))) < self.order_interval:
+                                        continue
+
                                     self.logger.info('{}/{} 浮盈加仓 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
 
                                     res_short = trade.open_order(self.symbol, 'SELL', float(self.redisClient.getKey("{}_position_size_{}".format(self.token, self.direction))), price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='SHORT').json()
@@ -741,6 +760,7 @@ class GridStrategy(Process):
                                     else:
                                         self.redisClient.setKey('{}_orderId_{}_{}_{}'.format(self.token, res_short["orderId"], 'SHORT', PublicModels.changeTimeNoTabs(time.time())), json.dumps(res_short))
                                         self.redisClient.lpushKey("{}_short_qty".format(self.token), self.redisClient.getKey("{}_position_size_{}".format(self.token, self.direction)))
+                                        self.redisClient.setKey("{}_last_order_time_{}".format(self.token, self.direction), time.time())
 
                                     if float(self.redisClient.getKey("{}_base_price_{}".format(self.token, self.direction))) < float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))):
                                         self.redisClient.setKey("{}_avg_{}".format(self.token, self.direction), self.redisClient.getKey("{}_avg_tmp_{}".format(self.token, self.direction)))
@@ -825,6 +845,10 @@ class GridStrategy(Process):
 
                         # 判断当前价格
                         if buy_condition1:
+                            # 判断上一次下单间隔, 如果未到达跳出当前判断
+                            if time.time() - float(self.redisClient.getKey("{}_last_order_time_{}".format(self.token, self.direction))) < self.order_interval:
+                                continue
+
                             self.logger.info('{}/{} 下单开多, 下单数量 {}, 下单价格 {} {}'.format(
                                 self.symbol,
                                 self.side,
@@ -841,6 +865,7 @@ class GridStrategy(Process):
                             else:
                                 self.redisClient.setKey('{}_orderId_{}_{}_{}'.format(self.token, res_long["orderId"], 'LONG', PublicModels.changeTimeNoTabs(time.time())), json.dumps(res_long))
                                 self.redisClient.lpushKey("{}_long_qty".format(self.token), self.redisClient.getKey("{}_position_size_{}".format(self.token, self.direction)))
+                                self.redisClient.setKey("{}_last_order_time_{}".format(self.token, self.direction), time.time())
 
                             self.redisClient.incrKey("{}_step_{}".format(self.token, self.direction))
                             self.redisClient.setKey("{}_avg_{}".format(self.token, self.direction), self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction)))
@@ -918,7 +943,12 @@ class GridStrategy(Process):
                         # 亏本达到 add_rate% * 持仓数量 时进行虚亏加仓, 判定值根据持仓单的数据进行上下浮动
                         elif condition and float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) <= float(self.redisClient.getKey("{}_last_trade_price_{}".format(self.token, self.direction))) * (1 - self.add_rate * np.log(1 + int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction))))):
 
+                            # 判断上一次下单间隔, 如果未到达跳出当前判断
+                            if time.time() - float(self.redisClient.getKey("{}_last_order_time_{}".format(self.token, self.direction))) < self.order_interval:
+                                continue
+
                             if float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) >= float(self.redisClient.getKey("{}_lowest_price_{}".format(self.token, self.direction))) * (1 + (1 - float(self.redisClient.getKey("{}_lowest_price_{}".format(self.token, self.direction))) / float(self.redisClient.getKey("{}_last_trade_price_{}".format(self.token, self.direction)))) / 5):
+                                
                                 self.logger.info('{}/{} 虚亏加仓 {} {}'.format(self.symbol, self.side, float(sum([Decimal(item) for item in self.redisClient.lrangeKey("{}_long_qty".format(self.token), 0, -1)])), PublicModels.changeTime(time.time())))
 
                                 res_long = trade.open_order(self.symbol, 'BUY', float(sum([Decimal(item) for item in self.redisClient.lrangeKey("{}_long_qty".format(self.token), 0, -1)])), price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='LONG').json()
@@ -931,6 +961,7 @@ class GridStrategy(Process):
                                 else:
                                     self.redisClient.setKey('{}_orderId_{}_{}_{}'.format(self.token, res_long["orderId"], 'LONG', PublicModels.changeTimeNoTabs(time.time())), json.dumps(res_long))
                                     self.redisClient.lpushKey("{}_long_qty".format(self.token), float(sum([Decimal(item) for item in self.redisClient.lrangeKey("{}_long_qty".format(self.token), 0, -1)])))
+                                    self.redisClient.setKey("{}_last_order_time_{}".format(self.token, self.direction), time.time())
 
                                 _lowest_price = min(float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), float(self.redisClient.getKey("{}_lowest_price_{}".format(self.token, self.direction))))
                                 self.redisClient.setKey("{}_lowest_price_{}".format(self.token, self.direction), _lowest_price)
@@ -1098,6 +1129,9 @@ class GridStrategy(Process):
                             elif condition:
                                 # 当前价格如果 大于 购买价格的 profit% 则进行浮盈加仓一次
                                 if float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) >= float(self.redisClient.getKey("{}_base_price_{}".format(self.token, self.direction))) * (1 + self.profit):
+                                    # 判断上一次下单间隔, 如果未到达跳出当前判断
+                                    if time.time() - float(self.redisClient.getKey("{}_last_order_time_{}".format(self.token, self.direction))) < self.order_interval:
+                                        continue
 
                                     self.logger.info('{}/{} 浮盈加仓 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
 
@@ -1111,7 +1145,8 @@ class GridStrategy(Process):
                                     else:
                                         self.redisClient.setKey('{}_orderId_{}_{}_{}'.format(self.token, res_long["orderId"], 'LONG', PublicModels.changeTimeNoTabs(time.time())), json.dumps(res_long))
                                         self.redisClient.lpushKey("{}_long_qty".format(self.token), self.redisClient.getKey("{}_position_size_{}".format(self.token, self.direction)))
-                                        
+                                        self.redisClient.setKey("{}_last_order_time_{}".format(self.token, self.direction), time.time())
+
                                     if float(self.redisClient.getKey("{}_base_price_{}".format(self.token, self.direction))) > float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))):
                                         self.redisClient.setKey("{}_avg_{}".format(self.token, self.direction), self.redisClient.getKey("{}_avg_tmp_{}".format(self.token, self.direction)))
                                     # 计算开单均价
