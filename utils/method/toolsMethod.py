@@ -227,7 +227,7 @@ def globalSetOrderIDStatus(symbol, key, secret, token):
                 if longOrderUndo(trade, logger, keyValue["symbol"], token, direction, orderInfo, timestamp=1800, rate=0.012):
                     continue
 
-                # 判断远程 API 当前 orderID 的状态 FILLED 为已经成功建仓 NEW 为委托单 EXPIRED 过期
+                # 判断远程 API 当前 orderID 的状态 FILLED 为已经成功建仓 NEW 为委托单 EXPIRED 过期 CANCELED 取消订单
                 if orderInfo["status"] == "FILLED":
 
                     # 判断是否为买多
@@ -265,7 +265,7 @@ def globalSetOrderIDStatus(symbol, key, secret, token):
                         else:
                             logger.error("订单方向 {} 信息 {} 失败 减仓 Key 值 {} 数量 {}".format(direction, orderInfo, "{}_real_short_qty".format(token), orderInfo["origQty"]))
                 # 判断如果是失效订单，直接移除
-                elif orderInfo["status"] == "EXPIRED":
+                elif orderInfo["status"] == "EXPIRED" or orderInfo["status"] == "CANCELED":
                     # 判断是否为买多
                     if orderInfo["side"] == "BUY" and direction == "LONG" and direction == orderInfo["positionSide"]:
                         redisClient.delKey(keyName)
