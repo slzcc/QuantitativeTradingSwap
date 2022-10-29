@@ -182,8 +182,8 @@ class TradeApi:
         '''撤销某订单'''
         path = "{}/fapi/v1/order".format(FUTURE_URL)
         params = {"symbol": symbol,"orderId": orderId}
-        params.update({"recvWindow": 5000})
-        query = self._sign(params)
+        params.update({"recvWindow": binance_recvWindow})
+        query = self._sign(self.secret, params)
         url = "%s" % (path)
         header = {"X-MBX-APIKEY": self.api}
         return PublicModels.PublicRequests(request={"model": "DELETE", "url": url, "header": header, "params": query, "timeout": 5, "verify": True, "proxies": PROXIES_DEFAULT_DATA}, recursive_abnormal={"recursive": 10, "count": 0, "alert_count": 10})
@@ -192,8 +192,8 @@ class TradeApi:
         '''撤销全部订单'''
         path = "{}/fapi/v1/allOpenOrders".format(FUTURE_URL)
         params = {"symbol": symbol}
-        params.update({"recvWindow": 5000})
-        query = self._sign(params)
+        params.update({"recvWindow": binance_recvWindow})
+        query = self._sign(self.secret, params)
         url = "%s" % (path)
         header = {"X-MBX-APIKEY": self.api}
         return PublicModels.PublicRequests(request={"model": "DELETE", "url": url, "header": header, "params": query, "timeout": 5, "verify": True, "proxies": PROXIES_DEFAULT_DATA}, recursive_abnormal={"recursive": 10, "count": 0, "alert_count": 10})
