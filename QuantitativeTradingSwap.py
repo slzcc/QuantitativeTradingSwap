@@ -49,7 +49,6 @@ def longOrderUndo(trade, logger, symbol, token, direction, orderInfo, timestamp=
     redisClient = redisMethod.redisUtils()
 
     orderOfTime = orderInfo["updateTime"] / 1000
-    print(orderInfo)
 
     logger.info("正在检测委托单是否失效 {}".format(orderInfo))
 
