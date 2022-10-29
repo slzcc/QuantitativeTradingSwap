@@ -1179,6 +1179,6 @@ if __name__ == '__main__':
     p1 = Process(target=globalSetOrderIDStatus, args=(args.symbol, args.key, args.secret, args.token,))
     gs = GridStrategy(**conn_setting)
     p1.start()
-    # gs.run()
-    # gs.join()
+    gs.run()
+    gs.join()
     p1.join()
