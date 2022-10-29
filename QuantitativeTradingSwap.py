@@ -206,7 +206,7 @@ def globalSetOrderIDStatus(symbol, key, secret, token):
                     continue
 
                 # 判断远程 API 当前 orderID 的状态 FILLED 为已经成功建仓 NEW 为委托单 EXPIRED 过期
-                if orderInfo["status"] != "NEW":
+                if orderInfo["status"] == "FILLED":
                     redisClient.delKey(keyName)
 
                     # 判断是否为买多
@@ -235,6 +235,26 @@ def globalSetOrderIDStatus(symbol, key, secret, token):
                             logger.info("订单方向 {} 信息 {} 成功 减仓 并录入到 {} 数量 {}".format(direction, orderInfo, "{}_real_short_qty".format(token), orderInfo["origQty"]))
                         else:
                             logger.error("订单方向 {} 信息 {} 失败 减仓 Key 值 {} 数量 {}".format(direction, orderInfo, "{}_real_short_qty".format(token), orderInfo["origQty"]))
+                # 判断如果是失效订单，直接移除
+                elif orderInfo["status"] == "EXPIRED":
+                    # 判断是否为买多
+                    if orderInfo["side"] == "BUY" and direction == "LONG" and direction == orderInfo["positionSide"]:
+                        redisClient.lpushKey("{}_real_long_qty".format(token), orderInfo["origQty"])
+                    # 判断是否为买空
+                    elif orderInfo["side"] == "SELL" and direction == "SHORT" and direction == orderInfo["positionSide"]:
+                        redisClient.lpushKey("{}_real_short_qty".format(token), orderInfo["origQty"])
+                    # 判断是否为卖空
+                    elif orderInfo["side"] == "BUY" and direction == "SHORT" and direction == orderInfo["positionSide"]:
+                        _check_number = toolsMethod.checkListDetermine([float(item) for item in redisClient.lrangeKey("{}_real_short_qty".format(token), 0, -1)], orderInfo["origQty"])
+                        if _check_number[0]:
+                            for index, item in enumerate(_check_number[1]):
+                                redisClient.lremKey("{}_real_short_qty".format(token), item, _check_number[2][index])
+                    # 判断是否为卖空
+                    elif orderInfo["side"] == "BUY" and direction == "SHORT" and direction == orderInfo["positionSide"]:
+                        _check_number = toolsMethod.checkListDetermine([float(item) for item in redisClient.lrangeKey("{}_real_short_qty".format(token), 0, -1)], orderInfo["origQty"])
+                        if _check_number[0]:
+                            for index, item in enumerate(_check_number[1]):
+                                redisClient.lremKey("{}_real_short_qty".format(token), item, _check_number[2][index])
 
         except Exception as err:
             logger.error("订单操作异常 {}".format(err))
