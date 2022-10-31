@@ -27,7 +27,7 @@ def checkListDetermine(llist, determine, count=0, setp=0, length=1):
     :param   determine   # 判断值, 在列表中获取与此值相等的索引位
     :return  (False/True, [])
     """
-    if len(llist) == length:
+    if len(llist) != 1 and len(llist) == length:
         return False, [], []
     if len(llist) -1 < setp:
         setp = 0
