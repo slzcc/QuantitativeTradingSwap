@@ -971,6 +971,8 @@ class GridStrategy(Process):
                                     self.side,
                                     str(res_long),
                                     PublicModels.changeTime(time.time())))
+                                _env = checkRedisKeyValues(self.redisClient, self.token, self.direction, condition)
+                                self.logger.info(_env)
                                 continue
                             else:
                                 self.redisClient.setKey('{}_orderId_{}_{}_{}'.format(self.token, res_long["orderId"], 'LONG', PublicModels.changeTimeNoTabs(time.time())), json.dumps(res_long))

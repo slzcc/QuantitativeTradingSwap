@@ -114,10 +114,10 @@ def longOrderUndo(trade, logger, symbol, token, direction, orderInfo, timestamp=
                             return True
                         else:
                             redisClient.incrKey("{}_orderCheckId_{}_delay_destruction_{}".format(token, orderInfo["orderId"], direction))
-        # 当方向是 空多 时且是买单时
+        # 当方向是 空多 时且是卖单时
         if orderInfo["side"] == "BUY" and direction == "SHORT":
             # 现价大于开单价则需要进行撤单并恢复下单池可以数量
-            if float(redisClient.getKey("{}_present_price_{}".format(token, direction))) / float(orderInfo["price"]) >= 1 + rate:
+            if float(redisClient.getKey("{}_present_price_{}".format(token, direction))) / float(orderInfo["price"]) <= 1 - rate:
                 # 撤销委托单
                 res = trade.cancel_one_order(symbol, orderInfo["orderId"])
                 # 更新 redis 下单池
@@ -133,11 +133,10 @@ def longOrderUndo(trade, logger, symbol, token, direction, orderInfo, timestamp=
                             return True
                         else:
                             redisClient.incrKey("{}_orderCheckId_{}_delay_destruction_{}".format(token, orderInfo["orderId"], direction))
-        # 当方向是 空多 时且是卖单时
+        # 当方向是 空多 时且是买单时
         elif orderInfo["side"] == "SELL" and direction == "SHORT":
             # 现价小于开单价则需要进行撤单并恢复下单池可以数量
-            if float(redisClient.getKey("{}_present_price_{}".format(token, direction))) / float(orderInfo["price"]) <= 1 - rate:
-                # 撤销委托单
+            if float(redisClient.getKey("{}_present_price_{}".format(token, direction))) / float(orderInfo["price"]) >= 1 + rate:                # 撤销委托单
                 res = trade.cancel_one_order(symbol, orderInfo["orderId"])
                 # 更新 redis 下单池
                 for index, item in enumerate([float(item) for item in redisClient.lrangeKey("{}_short_qty".format(token), 0, -1)]):
@@ -250,7 +249,7 @@ def globalSetOrderIDStatus(symbol, key, secret, token):
                                 redisClient.lremKey("{}_real_long_qty".format(token), item, _check_number[2][index])
                                 logger.info("订单方向 {} 信息 {} 成功 减仓 并录入到 {} 数量 {}".format(direction, orderInfo, "{}_real_long_qty".format(token), orderInfo["origQty"]))
                         else:
-                            logger.error("订单方向 {} 信息 {} 失败 减仓 Key 值 {} 数量 {} 检测结果 {}".format(direction, orderInfo, "{}_real_long_qty".format(token), orderInfo["origQty"], _check_number))
+                            logger.error("订单方向 {} 信息 {} 失败 减仓 Key 值 {} 数量 {} 检测结果 {} 现有订单池 {}".format(direction, orderInfo, "{}_real_long_qty".format(token), orderInfo["origQty"], _check_number, [float(item) for item in redisClient.lrangeKey("{}_real_long_qty".format(token), 0, -1)]))
                     # 判断是否为卖空
                     elif orderInfo["side"] == "BUY" and direction == "SHORT" and direction == orderInfo["positionSide"]:
                         if int(redisClient.llenKey("{}_real_short_qty".format(token))) == 0:
@@ -262,7 +261,7 @@ def globalSetOrderIDStatus(symbol, key, secret, token):
                                 redisClient.lremKey("{}_real_short_qty".format(token), item, _check_number[2][index])
                                 logger.info("订单方向 {} 信息 {} 成功 减仓 并录入到 {} 数量 {}".format(direction, orderInfo, "{}_real_short_qty".format(token), orderInfo["origQty"]))
                         else:
-                            logger.error("订单方向 {} 信息 {} 失败 减仓 Key 值 {} 数量 {} 检测结果 {}".format(direction, orderInfo, "{}_real_short_qty".format(token), orderInfo["origQty"], _check_number))
+                            logger.error("订单方向 {} 信息 {} 失败 减仓 Key 值 {} 数量 {} 检测结果 {} 现有订单池 {}".format(direction, orderInfo, "{}_real_short_qty".format(token), orderInfo["origQty"], _check_number, [float(item) for item in redisClient.lrangeKey("{}_real_long_qty".format(token), 0, -1)]))
                 # 判断如果是失效订单，直接移除
                 elif orderInfo["status"] == "EXPIRED" or orderInfo["status"] == "CANCELED":
                     # 判断是否为买多
