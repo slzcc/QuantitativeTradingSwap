@@ -53,6 +53,16 @@ def checkListDetermine(llist, determine, count=0, setp=0, length=1):
         if not _checkType:
             return checkListDetermine(llist, determine, count=count, setp=setp + 1, length=length)
 
+def checkRedisKeyValues(redisClient, token, direction, condition=None):
+    # 输出 Redis 数据内容
+    _env = {}
+    for item in redisClient.getKeys("{}*{}".format(token, direction)):
+        _env[item] = redisClient.getKey(item)
+    for item in redisClient.getKeys("{}*qty".format(token)):
+        _env[item] = redisClient.lrangeKey(item, 0, -1)
+    _env["condition"] = condition
+    return _env
+
 def longOrderUndo(trade, logger, symbol, token, direction, orderInfo, timestamp=1800, rate=0.007, checkIDdelayNumber=7):
     """
     :trade  tradeObject
@@ -80,8 +90,6 @@ def longOrderUndo(trade, logger, symbol, token, direction, orderInfo, timestamp=
         if orderInfo["side"] == "BUY" and direction == "LONG":
             # 现价大于开单价则需要进行撤单并恢复下单池可以数量
             if float(redisClient.getKey("{}_present_price_{}".format(token, direction))) / float(orderInfo["price"]) >= 1 + rate:
-                # 撤销委托单
-                res = trade.cancel_one_order(symbol, orderInfo["orderId"])
                 # 更新 redis 下单池
                 for index, item in enumerate([float(item) for item in redisClient.lrangeKey("{}_long_qty".format(token), 0, -1)]):
                     if item == orderInfo["origQty"]:
@@ -92,6 +100,8 @@ def longOrderUndo(trade, logger, symbol, token, direction, orderInfo, timestamp=
                             redisClient.lremKey("{}_long_qty".format(token), index, item)
                             logger.info("委托单 {} 已经撤单, 并恢复下单池".format(orderInfo))
                             redisClient.delKey("{}_orderCheckId_{}_delay_destruction_{}".format(token, orderInfo["orderId"], direction))
+                            # 撤销委托单
+                            res = trade.cancel_one_order(symbol, orderInfo["orderId"])
                             return True
                         else:
                             redisClient.incrKey("{}_orderCheckId_{}_delay_destruction_{}".format(token, orderInfo["orderId"], direction))
@@ -99,8 +109,6 @@ def longOrderUndo(trade, logger, symbol, token, direction, orderInfo, timestamp=
         elif orderInfo["side"] == "SELL" and direction == "LONG":
             # 现价小于开单价则需要进行撤单并恢复下单池可以数量
             if float(redisClient.getKey("{}_present_price_{}".format(token, direction))) / float(orderInfo["price"]) <= 1 - rate:
-                # 撤销委托单
-                res = trade.cancel_one_order(symbol, orderInfo["orderId"])
                 # 更新 redis 下单池
                 for index, item in enumerate([float(item) for item in redisClient.lrangeKey("{}_long_qty".format(token), 0, -1)]):
                     if item == orderInfo["origQty"]:
@@ -111,6 +119,8 @@ def longOrderUndo(trade, logger, symbol, token, direction, orderInfo, timestamp=
                             redisClient.lremKey("{}_long_qty".format(token), index, item)
                             logger.info("委托单 {} 已经撤单, 并恢复下单池".format(orderInfo))
                             redisClient.delKey("{}_orderCheckId_{}_delay_destruction_{}".format(token, orderInfo["orderId"], direction))
+                            # 撤销委托单
+                            res = trade.cancel_one_order(symbol, orderInfo["orderId"])
                             return True
                         else:
                             redisClient.incrKey("{}_orderCheckId_{}_delay_destruction_{}".format(token, orderInfo["orderId"], direction))
@@ -118,8 +128,6 @@ def longOrderUndo(trade, logger, symbol, token, direction, orderInfo, timestamp=
         if orderInfo["side"] == "BUY" and direction == "SHORT":
             # 现价大于开单价则需要进行撤单并恢复下单池可以数量
             if float(redisClient.getKey("{}_present_price_{}".format(token, direction))) / float(orderInfo["price"]) <= 1 - rate:
-                # 撤销委托单
-                res = trade.cancel_one_order(symbol, orderInfo["orderId"])
                 # 更新 redis 下单池
                 for index, item in enumerate([float(item) for item in redisClient.lrangeKey("{}_short_qty".format(token), 0, -1)]):
                     if item == orderInfo["origQty"]:
@@ -130,6 +138,8 @@ def longOrderUndo(trade, logger, symbol, token, direction, orderInfo, timestamp=
                             redisClient.lremKey("{}_short_qty".format(token), index, item)
                             logger.info("委托单 {} 已经撤单, 并恢复下单池".format(orderInfo))
                             redisClient.delKey("{}_orderCheckId_{}_delay_destruction_{}".format(token, orderInfo["orderId"], direction))
+                            # 撤销委托单
+                            res = trade.cancel_one_order(symbol, orderInfo["orderId"])
                             return True
                         else:
                             redisClient.incrKey("{}_orderCheckId_{}_delay_destruction_{}".format(token, orderInfo["orderId"], direction))
@@ -137,7 +147,6 @@ def longOrderUndo(trade, logger, symbol, token, direction, orderInfo, timestamp=
         elif orderInfo["side"] == "SELL" and direction == "SHORT":
             # 现价小于开单价则需要进行撤单并恢复下单池可以数量
             if float(redisClient.getKey("{}_present_price_{}".format(token, direction))) / float(orderInfo["price"]) >= 1 + rate:                # 撤销委托单
-                res = trade.cancel_one_order(symbol, orderInfo["orderId"])
                 # 更新 redis 下单池
                 for index, item in enumerate([float(item) for item in redisClient.lrangeKey("{}_short_qty".format(token), 0, -1)]):
                     if item == orderInfo["origQty"]:
@@ -148,6 +157,8 @@ def longOrderUndo(trade, logger, symbol, token, direction, orderInfo, timestamp=
                             redisClient.lremKey("{}_short_qty".format(token), index, item)
                             logger.info("委托单 {} 已经撤单, 并恢复下单池".format(orderInfo))
                             redisClient.delKey("{}_orderCheckId_{}_delay_destruction_{}".format(token, orderInfo["orderId"], direction))
+                            # 撤销委托单
+                            res = trade.cancel_one_order(symbol, orderInfo["orderId"])
                             return True
                         else:
                             redisClient.incrKey("{}_orderCheckId_{}_delay_destruction_{}".format(token, orderInfo["orderId"], direction))
@@ -221,6 +232,10 @@ def globalSetOrderIDStatus(symbol, key, secret, token):
                  'origType': 'LIMIT',
                  'updateTime': 1666170610732}
                 """
+                # 判断是否成功获取订单信息
+                if not "updateTime" in orderInfo.keys():
+                    continue
+
                 # 判断当前委托单是否超时且已经与现在价格产生误差
                 if longOrderUndo(trade, logger, keyValue["symbol"], token, direction, orderInfo, timestamp=1800, rate=0.012):
                     continue

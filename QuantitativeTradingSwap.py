@@ -22,16 +22,6 @@ from logging.handlers import TimedRotatingFileHandler
 from multiprocessing import Process
 from decimal import Decimal
 
-def checkRedisKeyValues(redisClient, token, direction, condition=None):
-    # 输出 Redis 数据内容
-    _env = {}
-    for item in redisClient.getKeys("{}*{}".format(token, direction)):
-        _env[item] = redisClient.getKey(item)
-    for item in redisClient.getKeys("{}*qty".format(token)):
-        _env[item] = redisClient.lrangeKey(item, 0, -1)
-    _env["condition"] = condition
-    return _env
-
 class GridStrategy(Process):
     def __init__(self, symbol, key, secret, token, market=False):
         """
@@ -255,7 +245,7 @@ class GridStrategy(Process):
                                 float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))),
                                 PublicModels.changeTime(time.time())))
 
-                            _env = checkRedisKeyValues(self.redisClient, self.token, self.direction)
+                            _env = toolsMethod.checkRedisKeyValues(self.redisClient, self.token, self.direction)
                             self.logger.info(_env)
 
                     # 当锚点为负数时, 证明已下过单
@@ -315,7 +305,7 @@ class GridStrategy(Process):
                             self.redisClient.setKey("{}_base_price_{}".format(self.token, self.direction), 0.0)
                             self.redisClient.setKey("{}_avg_tmp_{}".format(self.token, self.direction), 0.0)
 
-                            _env = checkRedisKeyValues(self.redisClient, self.token, self.direction, condition)
+                            _env = toolsMethod.checkRedisKeyValues(self.redisClient, self.token, self.direction, condition)
                             self.logger.info(_env)
 
                         ## 如果仓位亏损继续扩大则到达比例后进行加仓
@@ -368,7 +358,7 @@ class GridStrategy(Process):
                                     (time.time() - float(self.redisClient.getKey("{}_t_start_{}".format(self.token, self.direction)))) / 3600, 
                                     PublicModels.changeTime(time.time())))
 
-                                _env = checkRedisKeyValues(self.redisClient, self.token, self.direction, condition)
+                                _env = toolsMethod.checkRedisKeyValues(self.redisClient, self.token, self.direction, condition)
                                 self.logger.info(_env)
 
                         ## 如果仓位盈利且到达阀值后进行止盈平仓
@@ -449,7 +439,7 @@ class GridStrategy(Process):
                             self.redisClient.setKey("{}_base_price_{}".format(self.token, self.direction), 0.0)
                             self.redisClient.setKey("{}_avg_tmp_{}".format(self.token, self.direction), 0.0)
 
-                            _env = checkRedisKeyValues(self.redisClient, self.token, self.direction, condition)
+                            _env = toolsMethod.checkRedisKeyValues(self.redisClient, self.token, self.direction, condition)
                             self.logger.info(_env)
 
                         # 判断 第一次开仓后 && (当前价格 小于等于 购买价格 * (1 - self.min_profit)) && 最低价格 < 100000
@@ -509,7 +499,7 @@ class GridStrategy(Process):
                                     float(self.redisClient.getKey("{}_max_position_{}".format(self.token, self.direction))),
                                     (time.time() - float(self.redisClient.getKey("{}_t_start_{}".format(self.token, self.direction)))) / 3600, PublicModels.changeTime(time.time())))
 
-                                _env = checkRedisKeyValues(self.redisClient, self.token, self.direction, condition)
+                                _env = toolsMethod.checkRedisKeyValues(self.redisClient, self.token, self.direction, condition)
                                 self.logger.info(_env)
 
                             # 当前浮盈加仓又 Bug 当价格被拉低时则会使用超低价格购入
@@ -561,7 +551,7 @@ class GridStrategy(Process):
                                         (time.time() - float(self.redisClient.getKey("{}_t_start_{}".format(self.token, self.direction)))) / 3600, 
                                         PublicModels.changeTime(time.time())))
 
-                                    _env = checkRedisKeyValues(self.redisClient, self.token, self.direction, condition)
+                                    _env = toolsMethod.checkRedisKeyValues(self.redisClient, self.token, self.direction, condition)
                                     self.logger.info(_env)
 
                         elif int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction))) <= -1 and float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) <= float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * (1 - 0.003):
@@ -607,7 +597,7 @@ class GridStrategy(Process):
                                 (time.time() - float(self.redisClient.getKey("{}_t_start_{}".format(self.token, self.direction)))) / 3600,
                                 PublicModels.changeTime(time.time())))
 
-                            _env = checkRedisKeyValues(self.redisClient, self.token, self.direction, condition)
+                            _env = toolsMethod.checkRedisKeyValues(self.redisClient, self.token, self.direction, condition)
                             self.logger.info(_env)
 
                 # 如果策略为开 多 时
@@ -666,7 +656,7 @@ class GridStrategy(Process):
                                 float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))),
                                 PublicModels.changeTime(time.time())))
 
-                            _env = checkRedisKeyValues(self.redisClient, self.token, self.direction)
+                            _env = toolsMethod.checkRedisKeyValues(self.redisClient, self.token, self.direction)
                             self.logger.info(_env)
 
                     # 判断起始位大于 0, 至少开过一次仓
@@ -720,7 +710,7 @@ class GridStrategy(Process):
                             self.redisClient.setKey("{}_avg_tmp_{}".format(self.token, self.direction), 0.0)
                             self.redisClient.setKey("{}_step_{}".format(self.token, self.direction), 0)
 
-                            _env = checkRedisKeyValues(self.redisClient, self.token, self.direction, condition)
+                            _env = toolsMethod.checkRedisKeyValues(self.redisClient, self.token, self.direction, condition)
                             self.logger.info(_env)
 
                         # 当前价格小于购买价格时的比例价格则进行 虚亏加仓
@@ -770,7 +760,7 @@ class GridStrategy(Process):
                                     (time.time() - float(self.redisClient.getKey("{}_t_start_{}".format(self.token, self.direction)))) / 3600,
                                     PublicModels.changeTime(time.time())))
 
-                                _env = checkRedisKeyValues(self.redisClient, self.token, self.direction, condition)
+                                _env = toolsMethod.checkRedisKeyValues(self.redisClient, self.token, self.direction, condition)
                                 self.logger.info(_env)
 
                         elif (not condition) and float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) <= float(self.redisClient.getKey("{}_last_trade_price_{}".format(self.token, self.direction))) * (1 - self.add_rate * np.log(1 + int(self.redisClient.getKey("{}_step_{}".format(self.token, self.direction))))):
@@ -847,7 +837,7 @@ class GridStrategy(Process):
                             self.redisClient.setKey("{}_base_price_{}".format(self.token, self.direction), 0.0)
                             self.redisClient.setKey("{}_avg_tmp_{}".format(self.token, self.direction), 0.0)
 
-                            _env = checkRedisKeyValues(self.redisClient, self.token, self.direction, condition)
+                            _env = toolsMethod.checkRedisKeyValues(self.redisClient, self.token, self.direction, condition)
                             self.logger.info(_env)
 
                         # 当前价格如果大于 利润 profit% 或者大于 self.min_profit 即可进行盈利平多或加仓
@@ -909,7 +899,7 @@ class GridStrategy(Process):
                                     (time.time() - float(self.redisClient.getKey("{}_t_start_{}".format(self.token, self.direction)))) / 3600, 
                                     PublicModels.changeTime(time.time())))
 
-                                _env = checkRedisKeyValues(self.redisClient, self.token, self.direction, condition)
+                                _env = toolsMethod.checkRedisKeyValues(self.redisClient, self.token, self.direction, condition)
                                 self.logger.info(_env)
 
                             elif condition:
@@ -958,7 +948,7 @@ class GridStrategy(Process):
                                         (time.time() - float(self.redisClient.getKey("{}_t_start_{}".format(self.token, self.direction)))) / 3600, 
                                         PublicModels.changeTime(time.time())))
 
-                                    _env = checkRedisKeyValues(self.redisClient, self.token, self.direction, condition)
+                                    _env = toolsMethod.checkRedisKeyValues(self.redisClient, self.token, self.direction, condition)
                                     self.logger.info(_env)
 
                         ## 止盈最近的一次开仓
@@ -978,7 +968,7 @@ class GridStrategy(Process):
                                     self.side,
                                     str(res_long),
                                     PublicModels.changeTime(time.time())))
-                                _env = checkRedisKeyValues(self.redisClient, self.token, self.direction, condition)
+                                _env = toolsMethod.checkRedisKeyValues(self.redisClient, self.token, self.direction, condition)
                                 self.logger.info(_env)
                                 continue
                             else:
@@ -1010,7 +1000,7 @@ class GridStrategy(Process):
                                 (time.time() - float(self.redisClient.getKey("{}_t_start_{}".format(self.token, self.direction)))) / 3600,
                                 PublicModels.changeTime(time.time())))
 
-                            _env = checkRedisKeyValues(self.redisClient, self.token, self.direction, condition)
+                            _env = toolsMethod.checkRedisKeyValues(self.redisClient, self.token, self.direction, condition)
                             self.logger.info(_env)
 
                 _max_position = max(
