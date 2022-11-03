@@ -250,7 +250,7 @@ class GridStrategy(Process):
                         # 判断 仓位 是否需要进行止损(全仓平仓)
                         ## 判断 亏损 && (是否可以继续开仓) && 当前价格 大于等于 准备出售价格 乘以 (1 + 1.2 * 开仓数量比例值) ep: 19700.0 * (1 + 1.2 * np.log(1 - -1))
                         ## 主要判断亏损如果超过范围则进行止损平仓（开仓数量到达上限）
-                        if self.if_loss and (not condition) and float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) >= float(self.redisClient.getKey("{}_last_trade_price_{}".format(self.token, self.direction))) * (1 + self.add_rate * np.log(1 - int(self.redisClient.llenKey("{}_short_qty".format(self.token))))):
+                        if self.if_loss and (not condition) and float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) >= float(self.redisClient.getKey("{}_last_trade_price_{}".format(self.token, self.direction))) * (1 - self.add_rate * np.log(1 + int(self.redisClient.llenKey("{}_short_qty".format(self.token))))):
                             self.logger.info('{}/{} 平空止损 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
 
                             if int(self.redisClient.llenKey("{}_real_short_qty".format(self.token))) == 0:
@@ -303,7 +303,8 @@ class GridStrategy(Process):
                         ## 如果仓位亏损继续扩大则到达比例后进行加仓
                         ## 判断是否可以加仓
                         ## 20598.0 >= 20498.0 * (1 + 0.006 * np.log(1 + 1))
-                        elif condition and float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) >= float(self.redisClient.getKey("{}_last_trade_price_{}".format(self.token, self.direction))) * (1 + self.add_rate * np.log(1 - int(self.redisClient.llenKey("{}_short_qty".format(self.token))))):
+                        elif condition and float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) >= float(self.redisClient.getKey("{}_last_trade_price_{}".format(self.token, self.direction))) * (1 -
+                         self.add_rate * np.log(1 + int(self.redisClient.llenKey("{}_short_qty".format(self.token))))):
 
                             # 判断上一次下单间隔, 如果未到达跳出当前判断
                             if time.time() - float(self.redisClient.getKey("{}_last_order_time_{}".format(self.token, self.direction))) < self.order_interval:
@@ -353,7 +354,7 @@ class GridStrategy(Process):
                         ## 如果仓位盈利且到达阀值后进行止盈平仓
                         ## 判断 not condition 能继续开仓且 当前最新价格 >= 购买价格 * (1 + 加减仓百分比阀值 * 下单数量的自然对数)
                         ## 第一单盈利大于 0.00566 左右就可以盈利清仓
-                        elif (not condition) and float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) >= float(self.redisClient.getKey("{}_last_trade_price_{}".format(self.token, self.direction))) * (1 + self.add_rate * np.log(1 - int(self.redisClient.llenKey("{}_short_qty".format(self.token))))):
+                        elif (not condition) and float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) >= float(self.redisClient.getKey("{}_last_trade_price_{}".format(self.token, self.direction))) * (1 + self.add_rate * np.log(1 + int(self.redisClient.llenKey("{}_short_qty".format(self.token))))):
                             self.logger.info('{}/{} 重新开始下一轮 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
 
                             if int(self.redisClient.llenKey("{}_real_short_qty".format(self.token))) == 0:
