@@ -354,7 +354,8 @@ class GridStrategy(Process):
                         ## 如果仓位盈利且到达阀值后进行止盈平仓
                         ## 判断 not condition 能继续开仓且 当前最新价格 >= 购买价格 * (1 + 加减仓百分比阀值 * 下单数量的自然对数)
                         ## 第一单盈利大于 0.00566 左右就可以盈利清仓
-                        elif (not condition) and float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) >= float(self.redisClient.getKey("{}_last_trade_price_{}".format(self.token, self.direction))) * (1 + self.add_rate * np.log(1 + int(self.redisClient.llenKey("{}_short_qty".format(self.token))))):
+                        elif (not condition) and float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) >= float(self.redisClient.getKey("{}_last_trade_price_{}".format(self.token, self.direction))) * (1 -
+                         self.add_rate * np.log(1 + int(self.redisClient.llenKey("{}_short_qty".format(self.token))))):
                             self.logger.info('{}/{} 重新开始下一轮 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
 
                             if int(self.redisClient.llenKey("{}_real_short_qty".format(self.token))) == 0:
@@ -431,6 +432,9 @@ class GridStrategy(Process):
                         # 判断 第一次开仓后 && (当前价格 小于等于 购买价格 * (1 - self.min_profit)) && 最低价格 < 100000
                         elif int(self.redisClient.llenKey("{}_short_qty".format(self.token))) == 1 and (float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) <= float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * (1 - self.profit) or (float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) <= float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * (1 - self.min_profit) and float(self.redisClient.getKey("{}_lowest_price_{}".format(self.token, self.direction))) < 100000)):
 
+                            _lowest_price = min(float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), float(self.redisClient.getKey("{}_lowest_price_{}".format(self.token, self.direction))))
+                            self.redisClient.setKey("{}_lowest_price_{}".format(self.token, self.direction), _lowest_price)
+
                             # 最高处回调达到止盈位置则减仓一次
                             # 当盈利大于 0.00128 时就可以进行清仓
                             if float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) >= float(self.redisClient.getKey("{}_lowest_price_{}".format(self.token, self.direction))) * (1 + (1 - float(self.redisClient.getKey("{}_lowest_price_{}".format(self.token, self.direction))) / float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction)))) / 5):  # 重仓情形考虑回本平一半或平xx%的仓位, 待计算, 剩下依然重仓考虑吃多少点清仓
@@ -465,9 +469,6 @@ class GridStrategy(Process):
                                     else:
                                         self.redisClient.setKey('{}_orderId_{}_{}_{}'.format(self.token, res_short["orderId"], 'SHORT', PublicModels.changeTimeNoTabs(time.time())), json.dumps(res_short))
                                         self.redisClient.delKey("{}_short_qty".format(self.token))
-
-                                _lowest_price = min(float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), float(self.redisClient.getKey("{}_lowest_price_{}".format(self.token, self.direction))))
-                                self.redisClient.setKey("{}_lowest_price_{}".format(self.token, self.direction), _lowest_price)
 
                                 _win = (float(sum([Decimal(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)])) * (float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) - float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction)))) * (1 - 4e-4)) + float(self.redisClient.getKey("{}_win_{}".format(self.token, self.direction)))
                                 self.redisClient.setKey("{}_win_{}".format(self.token, self.direction), _win)
@@ -817,6 +818,9 @@ class GridStrategy(Process):
                         # 当前价格如果大于 利润 profit% 或者大于 self.min_profit 即可进行盈利平多或加仓
                         elif int(self.redisClient.llenKey("{}_long_qty".format(self.token))) == 1 and (float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) >= float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * (1 + self.profit) or (float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) >= float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * (1 + self.min_profit) and float(self.redisClient.getKey("{}_highest_price_{}".format(self.token, self.direction))) > 0)):
 
+                            _highest_price = max(float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), float(self.redisClient.getKey("{}_highest_price_{}".format(self.token, self.direction))))
+                            self.redisClient.setKey("{}_highest_price_{}".format(self.token, self.direction), _highest_price)
+
                             # 最高处回调达到止盈位置则减仓一次
                             # 当盈利大于 0.00128 时就可以进行减仓所有
                             if float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) <= float(self.redisClient.getKey("{}_highest_price_{}".format(self.token, self.direction))) * (1 - (float(self.redisClient.getKey("{}_highest_price_{}".format(self.token, self.direction))) / float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) - 1) / 5):  # 重仓情形考虑回本平一半或平xx%的仓位, 待计算, 剩下依然重仓考虑吃多少点清仓
@@ -852,9 +856,7 @@ class GridStrategy(Process):
                                         self.redisClient.setKey('{}_orderId_{}_{}_{}'.format(self.token, res_long["orderId"], 'LONG', PublicModels.changeTimeNoTabs(time.time())), json.dumps(res_long))
                                         self.redisClient.delKey("{}_long_qty".format(self.token))
 
-                                _highest_price = max(float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), float(self.redisClient.getKey("{}_highest_price_{}".format(self.token, self.direction))))
-                                self.redisClient.setKey("{}_highest_price_{}".format(self.token, self.direction), _highest_price)
-
+                                
                                 _win = (float(sum([Decimal(item) for item in self.redisClient.lrangeKey("{}_long_qty".format(self.token), 0, -1)])) * (float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) - float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction)))) * (1 - 4e-4)) + float(self.redisClient.getKey("{}_win_{}".format(self.token, self.direction)))
                                 self.redisClient.setKey("{}_win_{}".format(self.token, self.direction), _win)
                                 self.redisClient.setKey("{}_avg_{}".format(self.token, self.direction), 0.0)
