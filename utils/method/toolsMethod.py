@@ -246,12 +246,12 @@ def globalSetOrderIDStatus(symbol, key, secret, token):
                     # 判断是否为买多
                     if orderInfo["side"] == "BUY" and direction == "LONG" and direction == orderInfo["positionSide"]:
                         redisClient.lpushKey("{}_real_long_qty".format(token), orderInfo["origQty"])
-                        logger.info("订单方向 {} 信息 {} 成功 建仓 并录入到 {} 数量 {}".format(direction, orderInfo, "{}_real_long_qty".format(token), orderInfo["origQty"]))
+                        logger.info("订单方向 {} 信息 {} 成功 建仓 并录入到 {} 数量 {} 当前值 {}".format(direction, orderInfo, "{}_real_long_qty".format(token), orderInfo["origQty"], [float(item) for item in redisClient.lrangeKey("{}_real_long_qty".format(token), 0, -1)]))
                         redisClient.delKey(keyName)
                     # 判断是否为买空
                     elif orderInfo["side"] == "SELL" and direction == "SHORT" and direction == orderInfo["positionSide"]:
                         redisClient.lpushKey("{}_real_short_qty".format(token), orderInfo["origQty"])
-                        logger.info("订单方向 {} 信息 {} 成功 建仓 并录入到 {} 数量 {}".format(direction, orderInfo, "{}_real_short_qty".format(token), orderInfo["origQty"]))
+                        logger.info("订单方向 {} 信息 {} 成功 建仓 并录入到 {} 数量 {} 当前值 {}".format(direction, orderInfo, "{}_real_short_qty".format(token), orderInfo["origQty"], [float(item) for item in redisClient.lrangeKey("{}_real_short_qty".format(token), 0, -1)]))
                         redisClient.delKey(keyName)
                     # 判断是否为卖多
                     elif orderInfo["side"] == "SELL" and direction == "LONG" and direction == orderInfo["positionSide"]:
@@ -262,7 +262,7 @@ def globalSetOrderIDStatus(symbol, key, secret, token):
                             for index, item in enumerate(_check_number[1]):
                                 redisClient.delKey(keyName)
                                 redisClient.lremKey("{}_real_long_qty".format(token), item, _check_number[2][index])
-                                logger.info("订单方向 {} 信息 {} 成功 减仓 并录入到 {} 数量 {}".format(direction, orderInfo, "{}_real_long_qty".format(token), orderInfo["origQty"]))
+                                logger.info("订单方向 {} 信息 {} 成功 减仓 并录入到 {} 数量 {} 当前值 {}".format(direction, orderInfo, "{}_real_long_qty".format(token), orderInfo["origQty"], [float(item) for item in redisClient.lrangeKey("{}_real_long_qty".format(token), 0, -1)]))
                         else:
                             logger.error("订单方向 {} 信息 {} 失败 减仓 Key 值 {} 数量 {} 检测结果 {} 现有订单池 {}".format(direction, orderInfo, "{}_real_long_qty".format(token), orderInfo["origQty"], _check_number, [float(item) for item in redisClient.lrangeKey("{}_real_long_qty".format(token), 0, -1)]))
                     # 判断是否为卖空
@@ -274,7 +274,7 @@ def globalSetOrderIDStatus(symbol, key, secret, token):
                             for index, item in enumerate(_check_number[1]):
                                 redisClient.delKey(keyName)
                                 redisClient.lremKey("{}_real_short_qty".format(token), item, _check_number[2][index])
-                                logger.info("订单方向 {} 信息 {} 成功 减仓 并录入到 {} 数量 {}".format(direction, orderInfo, "{}_real_short_qty".format(token), orderInfo["origQty"]))
+                                logger.info("订单方向 {} 信息 {} 成功 减仓 并录入到 {} 数量 {} 当前值 {}".format(direction, orderInfo, "{}_real_short_qty".format(token), orderInfo["origQty"], [float(item) for item in redisClient.lrangeKey("{}_real_short_qty".format(token), 0, -1)]))
                         else:
                             logger.error("订单方向 {} 信息 {} 失败 减仓 Key 值 {} 数量 {} 检测结果 {} 现有订单池 {}".format(direction, orderInfo, "{}_real_short_qty".format(token), orderInfo["origQty"], _check_number, [float(item) for item in redisClient.lrangeKey("{}_real_long_qty".format(token), 0, -1)]))
                 # 判断如果是失效订单，直接移除

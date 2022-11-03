@@ -622,7 +622,6 @@ class GridStrategy(Process):
                                 self.redisClient.lpushKey("{}_long_qty".format(self.token), self.redisClient.getKey("{}_position_size_{}".format(self.token, self.direction)))
                                 self.redisClient.setKey("{}_last_order_time_{}".format(self.token, self.direction), time.time())
 
-                            
                             self.redisClient.setKey("{}_avg_{}".format(self.token, self.direction), self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction)))
                             self.redisClient.setKey("{}_base_price_{}".format(self.token, self.direction), self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction)))
                             self.redisClient.setKey("{}_last_trade_price_{}".format(self.token, self.direction), self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction)))
