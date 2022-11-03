@@ -560,7 +560,6 @@ class GridStrategy(Process):
                             self.redisClient.setKey("{}_highest_price_{}".format(self.token, self.direction), 0.0)
                             self.redisClient.setKey("{}_lowest_price_{}".format(self.token, self.direction), 100000.0)
                             if int(self.redisClient.llenKey("{}_short_qty".format(self.token))) == 0:
-                                self.redisClient.setKey("{}_avg_{}".format(self.token, self.direction), 0.0)
                                 self.redisClient.setKey("{}_last_trade_price_{}".format(self.token, self.direction), 0.0)
                                 self.redisClient.setKey("{}_base_price_{}".format(self.token, self.direction), 0.0)
                                 self.redisClient.setKey("{}_avg_tmp_{}".format(self.token, self.direction), 0.0)
@@ -791,7 +790,7 @@ class GridStrategy(Process):
                                     self.logger.info('%s/%s 重新开始下一轮失败1 \t %s \t %s' % (self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
                                     continue
                                 else:
-                                    self.redisClient.setKey('{}_orderId_{}_{}_{}'.format(self.token, res_long["orderId"], 'LONG', PublicModels.changeTimeNoTabs(time.time())), json.dumps(res_long))
+                                    self.redisClient.setKey('{}_orderId_{}_{}_{}'.format(self.tokenn, res_long["orderId"], 'LONG', PublicModels.changeTimeNoTabs(time.time())), json.dumps(res_long))
                                     for item in _sell_number[-2:]:
                                         self.redisClient.brpopKey("{}_long_qty".format(self.token))
 
@@ -954,7 +953,6 @@ class GridStrategy(Process):
                             self.redisClient.setKey("{}_highest_price_{}".format(self.token, self.direction), 0.0)
                             self.redisClient.setKey("{}_lowest_price_{}".format(self.token, self.direction), 100000.0)
                             if int(self.redisClient.llenKey("{}_long_qty".format(self.token))) == 0:
-                                self.redisClient.setKey("{}_avg_{}".format(self.token, self.direction), 0.0)
                                 self.redisClient.setKey("{}_last_trade_price_{}".format(self.token, self.direction), 0.0)
                                 self.redisClient.setKey("{}_base_price_{}".format(self.token, self.direction), 0.0)
                                 self.redisClient.setKey("{}_avg_tmp_{}".format(self.token, self.direction), 0.0)
