@@ -790,7 +790,7 @@ class GridStrategy(Process):
                                     self.logger.info('%s/%s 重新开始下一轮失败1 \t %s \t %s' % (self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
                                     continue
                                 else:
-                                    self.redisClient.setKey('{}_orderId_{}_{}_{}'.format(self.tokenn, res_long["orderId"], 'LONG', PublicModels.changeTimeNoTabs(time.time())), json.dumps(res_long))
+                                    self.redisClient.setKey('{}_orderId_{}_{}_{}'.format(self.token, res_long["orderId"], 'LONG', PublicModels.changeTimeNoTabs(time.time())), json.dumps(res_long))
                                     for item in _sell_number[-2:]:
                                         self.redisClient.brpopKey("{}_long_qty".format(self.token))
 
