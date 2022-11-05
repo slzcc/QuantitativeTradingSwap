@@ -255,7 +255,7 @@ def globalSetOrderIDStatus(symbol, key, secret, token):
                         redisClient.delKey(keyName)
                     # 判断是否为卖多
                     elif orderInfo["side"] == "SELL" and direction == "LONG" and direction == orderInfo["positionSide"]:
-                        if int(redisClient.llenKey("{}_real_long_qty".format(token))) == 0:
+                        if not redisClient.llenKey("{}_real_long_qty".format(token)):
                             continue
                         _check_number = checkListDetermine([float(item) for item in redisClient.lrangeKey("{}_real_long_qty".format(token), 0, -1)], orderInfo["origQty"])
                         if _check_number[0]:
@@ -267,7 +267,7 @@ def globalSetOrderIDStatus(symbol, key, secret, token):
                             logger.error("订单方向 {} 信息 {} 失败 减仓 Key 值 {} 数量 {} 检测结果 {} 现有订单池 {}".format(direction, orderInfo, "{}_real_long_qty".format(token), orderInfo["origQty"], _check_number, [float(item) for item in redisClient.lrangeKey("{}_real_long_qty".format(token), 0, -1)]))
                     # 判断是否为卖空
                     elif orderInfo["side"] == "BUY" and direction == "SHORT" and direction == orderInfo["positionSide"]:
-                        if int(redisClient.llenKey("{}_real_short_qty".format(token))) == 0:
+                        if not redisClient.llenKey("{}_real_short_qty".format(token)):
                             continue
                         _check_number = checkListDetermine([float(item) for item in redisClient.lrangeKey("{}_real_short_qty".format(token), 0, -1)], orderInfo["origQty"])
                         if _check_number[0]:
@@ -281,7 +281,7 @@ def globalSetOrderIDStatus(symbol, key, secret, token):
                 elif orderInfo["status"] == "EXPIRED" or orderInfo["status"] == "CANCELED":
                     # 判断是否为买多
                     if orderInfo["side"] == "BUY" and direction == "LONG" and direction == orderInfo["positionSide"]:
-                        if int(redisClient.llenKey("{}_long_qty".format(token))) == 0:
+                        if not redisClient.llenKey("{}_long_qty".format(token)):
                             continue
                         _check_number = checkListDetermine([float(item) for item in redisClient.lrangeKey("{}_long_qty".format(token), 0, -1)], orderInfo["origQty"])
                         if _check_number[0]:
@@ -291,7 +291,7 @@ def globalSetOrderIDStatus(symbol, key, secret, token):
                                 logger.info("订单超时方向 {} 信息 {} 从 {} 中摘除数量 {}".format(direction, orderInfo, "{}_long_qty".format(token), orderInfo["origQty"]))
                     # 判断是否为买空
                     elif orderInfo["side"] == "SELL" and direction == "SHORT" and direction == orderInfo["positionSide"]:
-                        if int(redisClient.llenKey("{}_short_qty".format(token))) == 0:
+                        if not redisClient.llenKey("{}_short_qty".format(token)):
                             continue
                         _check_number = checkListDetermine([float(item) for item in redisClient.lrangeKey("{}_short_qty".format(token), 0, -1)], orderInfo["origQty"])
                         if _check_number[0]:
