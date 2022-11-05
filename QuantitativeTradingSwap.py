@@ -206,8 +206,12 @@ class GridStrategy(Process):
 
                             self.logger.info('{}/{} 下单开空, 下单数量 {}, 下单价格 {} {}'.format(self.symbol, self.side, self.redisClient.getKey("{}_position_size_{}".format(self.token, self.direction)), self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction)), PublicModels.changeTime(time.time())))
 
+                            quantity = float(self.redisClient.getKey("{}_position_size_{}".format(self.token, self.direction)))
+                            if not quantity:
+                                continue
+
                             # 下单开空, 市价开单
-                            res_short = trade.open_order(self.symbol, 'SELL', float(self.redisClient.getKey("{}_position_size_{}".format(self.token, self.direction))), price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='SHORT').json()
+                            res_short = trade.open_order(self.symbol, 'SELL', quantity, price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='SHORT').json()
 
                             # 判断下单是否成功
                             if not 'orderId' in res_short.keys():
@@ -258,7 +262,12 @@ class GridStrategy(Process):
                                 continue
 
                             if int(self.redisClient.llenKey("{}_short_qty".format(self.token))) > int(self.redisClient.llenKey("{}_real_short_qty".format(self.token))):
-                                res_short = trade.open_order(self.symbol, 'SELL', float(sum([Decimal(item) for item in self.redisClient.lrangeKey("{}_real_short_qty".format(self.token), 0, -1)])), price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='LONG').json()
+
+                                quantity = float(sum([Decimal(item) for item in self.redisClient.lrangeKey("{}_real_short_qty".format(self.token), 0, -1)]))
+                                if not quantity:
+                                    continue
+
+                                res_short = trade.open_order(self.symbol, 'SELL', quantity, price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='LONG').json()
 
                                 if not 'orderId' in res_short.keys():
                                     self.logger.info('%s/%s 平空止损失败 \t %s \t %s' % (self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
@@ -312,8 +321,12 @@ class GridStrategy(Process):
                             if float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))) <= float(self.redisClient.getKey("{}_highest_price_{}".format(self.token, self.direction))) * (1 - (float(self.redisClient.getKey("{}_highest_price_{}".format(self.token, self.direction))) / float(self.redisClient.getKey("{}_last_trade_price_{}".format(self.token, self.direction))) - 1) / 5):
                                 self.logger.info('{}/{} 虚亏加仓 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
 
+                                quantity = float(sum([Decimal(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)]))
+                                if not quantity:
+                                    continue
+
                                 # 下单加仓, 加仓会加整个仓位的一倍
-                                res_short = trade.open_order(self.symbol, 'SELL', float(sum([Decimal(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)])), price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='SHORT').json()
+                                res_short = trade.open_order(self.symbol, 'SELL', quantity, price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='SHORT').json()
 
                                 # 判断下单加仓
                                 if not 'orderId' in res_short.keys():
@@ -365,6 +378,9 @@ class GridStrategy(Process):
 
                                 _sell_number = [Decimal(item) for item in self.redisClient.lrangeKey("{}_real_short_qty".format(self.token), 0, -1)]
 
+                                if not float(sum(_sell_number[-2:])):
+                                    continue
+
                                 res_short = trade.open_order(self.symbol, 'SELL', float(sum(_sell_number[-2:])), price=round(float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * (1 + self.min_profit), self.price_precision), positionSide='LONG').json()
                                 if not 'orderId' in res_short.keys():
                                     self.logger.info('%s/%s 重新开始下一轮失败1 \t %s \t %s' % (self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
@@ -380,6 +396,9 @@ class GridStrategy(Process):
                                         if _check_number[0]:
                                             for index, item in enumerate(_check_number[1]):
                                                 self.redisClient.lremKey("{}_short_qty".format(token), item, _check_number[2][index])
+
+                                if not float(sum(_sell_number[:-2])):
+                                    continue
 
                                 res_short = trade.open_order(self.symbol, 'SELL', float(sum(_sell_number[:-2])), price=round(float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * (1 + self.min_profit), self.price_precision), positionSide='LONG').json()
                                 if not 'orderId' in res_short.keys():
@@ -399,6 +418,9 @@ class GridStrategy(Process):
                             else:
                                 _sell_number = [Decimal(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)]
 
+                                if not float(sum(_sell_number[-2:])):
+                                    continue
+
                                 res_short = trade.open_order(self.symbol, 'BUY', float(sum(_sell_number[-2:])), price=round(float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * (1 - self.min_profit), self.price_precision), positionSide='SHORT').json()
                                 if not 'orderId' in res_short.keys():
                                     self.logger.info('%s/%s 重新开始下一轮失败1 \t %s \t %s' % (self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
@@ -407,6 +429,9 @@ class GridStrategy(Process):
                                     self.redisClient.setKey('{}_orderId_{}_{}_{}'.format(self.token, res_short["orderId"], 'SHORT', PublicModels.changeTimeNoTabs(time.time())), json.dumps(res_short))
                                     for item in _sell_number[-2:]:
                                         self.redisClient.brpopKey("{}_short_qty".format(self.token))
+
+                                if not float(sum(_sell_number[:-2])):
+                                    continue
 
                                 res_short = trade.open_order(self.symbol, 'BUY', float(sum(_sell_number[:-2])), price=round(float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * (1 - self.profit), self.price_precision), positionSide='SHORT').json()
                                 if not 'orderId' in res_short.keys():
@@ -443,7 +468,11 @@ class GridStrategy(Process):
 
                                 if int(self.redisClient.llenKey("{}_short_qty".format(self.token))) > int(self.redisClient.llenKey("{}_real_short_qty".format(self.token))):
 
-                                    res_short = trade.open_order(self.symbol, 'SELL', float(sum([Decimal(item) for item in self.redisClient.lrangeKey("{}_real_short_qty".format(self.token), 0, -1)])), price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='LONG').json()
+                                    quantity = float(sum([Decimal(item) for item in self.redisClient.lrangeKey("{}_real_short_qty".format(self.token), 0, -1)]))
+                                    if not quantity:
+                                        continue
+
+                                    res_short = trade.open_order(self.symbol, 'SELL', quantity, price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='LONG').json()
                                     if not 'orderId' in res_short.keys():
                                         self.logger.info('%s/%s 盈利平空全仓失败 \t %s \t %s' % (self.symbol, self.side, str(res_short), PublicModels.changeTime(time.time())))
                                         continue
@@ -496,7 +525,11 @@ class GridStrategy(Process):
 
                                     self.logger.info('{}/{} 浮盈加仓 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
 
-                                    res_short = trade.open_order(self.symbol, 'SELL', float(self.redisClient.getKey("{}_position_size_{}".format(self.token, self.direction))), price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='SHORT').json()
+                                    quantity = float(self.redisClient.getKey("{}_position_size_{}".format(self.token, self.direction)))
+                                    if not quantity:
+                                        continue
+
+                                    res_short = trade.open_order(self.symbol, 'SELL', quantity, price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='SHORT').json()
 
                                     if not 'orderId' in res_short.keys():
                                         if res_short['msg'] == 'Margin is insufficient.':
@@ -540,8 +573,12 @@ class GridStrategy(Process):
                                 self.logger.info('%s/%s 平老单一次仓位失败, 没有仓位可平 \t %s' % (self.symbol, self.side, PublicModels.changeTime(time.time())))
                                 continue
 
+                            quantity = [float(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)][-1]
+                            if not quantity:
+                                continue
+
                             # 下单平仓
-                            res_short = trade.open_order(self.symbol, 'BUY', [float(item) for item in self.redisClient.lrangeKey("{}_short_qty".format(self.token), 0, -1)][-1], price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='SHORT').json()
+                            res_short = trade.open_order(self.symbol, 'BUY', quantity, price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='SHORT').json()
 
                             # 判断下单平仓
                             if not 'orderId' in res_short.keys():
@@ -606,8 +643,12 @@ class GridStrategy(Process):
                                 float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))),
                                 PublicModels.changeTime(time.time())))
 
+                            quantity = float(self.redisClient.getKey("{}_position_size_{}".format(self.token, self.direction)))
+                            if not quantity:
+                                continue
+
                             # 下单开多
-                            res_long = trade.open_order(self.symbol, 'BUY', float(self.redisClient.getKey("{}_position_size_{}".format(self.token, self.direction))), price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='LONG').json()
+                            res_long = trade.open_order(self.symbol, 'BUY', quantity, price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='LONG').json()
                             # 判断是否下单成功
                             if not 'orderId' in res_long.keys():
                                 self.logger.info('{}/{} 下单开多失败 \t {} \t {}'.format(self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
@@ -647,7 +688,12 @@ class GridStrategy(Process):
                                 continue
 
                             if int(self.redisClient.llenKey("{}_long_qty".format(self.token))) > int(self.redisClient.llenKey("{}_real_long_qty".format(self.token))):
-                                res_long = trade.open_order(self.symbol, 'SELL', float(sum([Decimal(item) for item in self.redisClient.lrangeKey("{}_real_long_qty".format(self.token), 0, -1)])), price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='LONG').json()
+
+                                quantity = float(sum([Decimal(item) for item in self.redisClient.lrangeKey("{}_real_long_qty".format(self.token), 0, -1)]))
+                                if not quantity:
+                                    continue
+
+                                res_long = trade.open_order(self.symbol, 'SELL', quantity, price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='LONG').json()
 
                                 if not 'orderId' in res_long.keys():
                                     self.logger.info('%s/%s 平多失败 \t %s \t %s' % (self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
@@ -698,7 +744,11 @@ class GridStrategy(Process):
 
                                 self.logger.info('{}/{} 虚亏加仓 {} {}'.format(self.symbol, self.side, float(sum([Decimal(item) for item in self.redisClient.lrangeKey("{}_long_qty".format(self.token), 0, -1)])), PublicModels.changeTime(time.time())))
 
-                                res_long = trade.open_order(self.symbol, 'BUY', float(sum([Decimal(item) for item in self.redisClient.lrangeKey("{}_long_qty".format(self.token), 0, -1)])), price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='LONG').json()
+                                quantity = float(sum([Decimal(item) for item in self.redisClient.lrangeKey("{}_long_qty".format(self.token), 0, -1)]))
+                                if not quantity:
+                                    continue
+
+                                res_long = trade.open_order(self.symbol, 'BUY', quantity, price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='LONG').json()
                                 if not 'orderId' in res_long.keys():
                                     if res_long['msg'] == 'Margin is insufficient.':
                                         self.logger.info('%s/%s 虚亏加仓失败, 可用金不足 \t %s \t %s' % (self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
@@ -746,6 +796,9 @@ class GridStrategy(Process):
                             if int(self.redisClient.llenKey("{}_long_qty".format(self.token))) > int(self.redisClient.llenKey("{}_real_long_qty".format(self.token))):
                                 _sell_number = [Decimal(item) for item in self.redisClient.lrangeKey("{}_real_long_qty".format(self.token), 0, -1)]
 
+                                if not float(sum(_sell_number[-2:])):
+                                    continue
+
                                 res_long = trade.open_order(self.symbol, 'SELL', float(sum(_sell_number[-2:])), price=round(float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * (1 + self.min_profit), self.price_precision), positionSide='LONG').json()
                                 if not 'orderId' in res_long.keys():
                                     self.logger.info('%s/%s 重新开始下一轮失败1 \t %s \t %s' % (self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
@@ -761,6 +814,9 @@ class GridStrategy(Process):
                                         if _check_number[0]:
                                             for index, item in enumerate(_check_number[1]):
                                                 self.redisClient.lremKey("{}_long_qty".format(token), item, _check_number[2][index])
+
+                                if not float(sum(_sell_number[:-2])):
+                                    continue
 
                                 res_long = trade.open_order(self.symbol, 'SELL', float(sum(_sell_number[:-2])), price=round(float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * (1 + self.min_profit), self.price_precision), positionSide='LONG').json()
                                 if not 'orderId' in res_long.keys():
@@ -780,6 +836,9 @@ class GridStrategy(Process):
                             else:
                                 _sell_number = [Decimal(item) for item in self.redisClient.lrangeKey("{}_long_qty".format(self.token), 0, -1)]
 
+                                if not float(sum(_sell_number[-2:])):
+                                    continue
+
                                 res_long = trade.open_order(self.symbol, 'SELL', float(sum(_sell_number[-2:])), price=round(float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * (1 + self.min_profit), self.price_precision), positionSide='LONG').json()
                                 if not 'orderId' in res_long.keys():
                                     self.logger.info('%s/%s 重新开始下一轮失败1 \t %s \t %s' % (self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
@@ -788,6 +847,9 @@ class GridStrategy(Process):
                                     self.redisClient.setKey('{}_orderId_{}_{}_{}'.format(self.token, res_long["orderId"], 'LONG', PublicModels.changeTimeNoTabs(time.time())), json.dumps(res_long))
                                     for item in _sell_number[-2:]:
                                         self.redisClient.brpopKey("{}_long_qty".format(self.token))
+
+                                if not float(sum(_sell_number[:-2])):
+                                    continue
 
                                 res_long = trade.open_order(self.symbol, 'SELL', float(sum(_sell_number[:-2])), price=round(float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * (1 + self.profit), self.price_precision), positionSide='LONG').json()
                                 if not 'orderId' in res_long.keys():
@@ -824,7 +886,11 @@ class GridStrategy(Process):
 
                                 if int(self.redisClient.llenKey("{}_long_qty".format(self.token))) > int(self.redisClient.llenKey("{}_real_long_qty".format(self.token))):
 
-                                    res_long = trade.open_order(self.symbol, 'SELL', float(sum([Decimal(item) for item in self.redisClient.lrangeKey("{}_real_long_qty".format(self.token), 0, -1)])), price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='LONG').json()
+                                    quantity = float(sum([Decimal(item) for item in self.redisClient.lrangeKey("{}_real_long_qty".format(self.token), 0, -1)]))
+                                    if not quantity:
+                                        continue
+
+                                    res_long = trade.open_order(self.symbol, 'SELL', quantity, price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='LONG').json()
                                     if not 'orderId' in res_long.keys():
                                         self.logger.info('%s/%s 盈利平多全仓平多失败 \t %s \t %s' % (self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
                                         continue
@@ -877,7 +943,11 @@ class GridStrategy(Process):
 
                                     self.logger.info('{}/{} 浮盈加仓 {}'.format(self.symbol, self.side, PublicModels.changeTime(time.time())))
 
-                                    res_long = trade.open_order(self.symbol, 'BUY', float(self.redisClient.getKey("{}_position_size_{}".format(self.token, self.direction))), price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='LONG').json()
+                                    quantity = float(self.redisClient.getKey("{}_position_size_{}".format(self.token, self.direction)))
+                                    if not quantity:
+                                        continue
+
+                                    res_long = trade.open_order(self.symbol, 'BUY', quantity, price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='LONG').json()
                                     if not 'orderId' in res_long.keys():
                                         if res_long['msg'] == 'Margin is insufficient.':
                                             self.logger.info('%s/%s 浮盈加仓失败, 可用金不足 \t %s \t %s' % (self.symbol, self.side, str(res_long), PublicModels.changeTime(time.time())))
@@ -927,7 +997,11 @@ class GridStrategy(Process):
                                 self.logger.info('%s/%s 平老单一次仓位失败, 没有仓位可平 \t %s' % (self.symbol, self.side, PublicModels.changeTime(time.time())))
                                 continue
 
-                            res_long = trade.open_order(self.symbol, 'SELL', [float(item) for item in self.redisClient.lrangeKey("{}_long_qty".format(self.token), 0, -1)][-1], price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='LONG').json()
+                            quantity = [float(item) for item in self.redisClient.lrangeKey("{}_long_qty".format(self.token), 0, -1)][-1]
+                            if not quantity:
+                                continue
+
+                            res_long = trade.open_order(self.symbol, 'SELL', quantity, price=float(self.redisClient.getKey("{}_present_price_{}".format(self.token, self.direction))), positionSide='LONG').json()
                             if not 'orderId' in res_long.keys():
                                 self.logger.info('%s/%s 平老单一次仓位失败 \t %s \t %s' % (
                                     self.symbol,
