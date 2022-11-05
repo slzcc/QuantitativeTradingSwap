@@ -380,7 +380,6 @@ class GridStrategy(Process):
                                         if _check_number[0]:
                                             for index, item in enumerate(_check_number[1]):
                                                 self.redisClient.lremKey("{}_short_qty".format(token), item, _check_number[2][index])
-                                                
 
                                 res_short = trade.open_order(self.symbol, 'SELL', float(sum(_sell_number[:-2])), price=round(float(self.redisClient.getKey("{}_avg_{}".format(self.token, self.direction))) * (1 + self.min_profit), self.price_precision), positionSide='LONG').json()
                                 if not 'orderId' in res_short.keys():

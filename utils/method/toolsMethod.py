@@ -92,7 +92,7 @@ def longOrderUndo(trade, logger, symbol, token, direction, orderInfo, timestamp=
             if float(redisClient.getKey("{}_present_price_{}".format(token, direction))) / float(orderInfo["price"]) >= 1 + rate:
                 # 更新 redis 下单池
                 for index, item in enumerate([float(item) for item in redisClient.lrangeKey("{}_long_qty".format(token), 0, -1)]):
-                    if item == orderInfo["origQty"]:
+                    if item == float(orderInfo["origQty"]):
                         if int(redisClient.getKey("{}_orderCheckId_{}_delay_destruction_{}".format(token, orderInfo["orderId"], direction))) == 0:
                             # 设置这个 key 7 天过期
                             redisClient.setKey("{}_orderCheckId_{}_delay_destruction_{}".format(token, orderInfo["orderId"], direction), 1, expire=10080)
@@ -111,9 +111,9 @@ def longOrderUndo(trade, logger, symbol, token, direction, orderInfo, timestamp=
             if float(redisClient.getKey("{}_present_price_{}".format(token, direction))) / float(orderInfo["price"]) <= 1 - rate:
                 # 更新 redis 下单池
                 for index, item in enumerate([float(item) for item in redisClient.lrangeKey("{}_long_qty".format(token), 0, -1)]):
-                    if item == orderInfo["origQty"]:
+                    if item == float(orderInfo["origQty"]):
                         if int(redisClient.getKey("{}_orderCheckId_{}_delay_destruction_{}".format(token, orderInfo["orderId"], direction))) == 0:
-                            # 设置这个 key 7 天过期
+                            # 设置这个 key 7 天过期 
                             redisClient.setKey("{}_orderCheckId_{}_delay_destruction_{}".format(token, orderInfo["orderId"], direction), 1, expire=10080)
                         elif int(redisClient.getKey("{}_orderCheckId_{}_delay_destruction_{}".format(token, orderInfo["orderId"], direction))) == checkIDdelayNumber:
                             redisClient.lremKey("{}_long_qty".format(token), index, item)
@@ -130,7 +130,7 @@ def longOrderUndo(trade, logger, symbol, token, direction, orderInfo, timestamp=
             if float(redisClient.getKey("{}_present_price_{}".format(token, direction))) / float(orderInfo["price"]) <= 1 - rate:
                 # 更新 redis 下单池
                 for index, item in enumerate([float(item) for item in redisClient.lrangeKey("{}_short_qty".format(token), 0, -1)]):
-                    if item == orderInfo["origQty"]:
+                    if item == float(orderInfo["origQty"]):
                         if int(redisClient.getKey("{}_orderCheckId_{}_delay_destruction_{}".format(token, orderInfo["orderId"], direction))) == 0:
                             # 设置这个 key 7 天过期
                             redisClient.setKey("{}_orderCheckId_{}_delay_destruction_{}".format(token, orderInfo["orderId"], direction), 1, expire=10080)
@@ -149,7 +149,7 @@ def longOrderUndo(trade, logger, symbol, token, direction, orderInfo, timestamp=
             if float(redisClient.getKey("{}_present_price_{}".format(token, direction))) / float(orderInfo["price"]) >= 1 + rate:                # 撤销委托单
                 # 更新 redis 下单池
                 for index, item in enumerate([float(item) for item in redisClient.lrangeKey("{}_short_qty".format(token), 0, -1)]):
-                    if item == orderInfo["origQty"]:
+                    if item == float(orderInfo["origQty"]):
                         if int(redisClient.getKey("{}_orderCheckId_{}_delay_destruction_{}".format(token, orderInfo["orderId"], direction))) == 0:
                             # 设置这个 key 7 天过期
                             redisClient.setKey("{}_orderCheckId_{}_delay_destruction_{}".format(token, orderInfo["orderId"], direction), 1, expire=10080)
