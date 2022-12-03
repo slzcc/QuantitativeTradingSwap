@@ -32,11 +32,35 @@ from logging.handlers import TimedRotatingFileHandler
 from multiprocessing import Process
 from decimal import Decimal
 
+# 创建日志器对象
+######################################## Logging __name__ #######################################
+logger = logging.getLogger('ETHBTC')
+
+# 设置logger可输出日志级别范围
+logger.setLevel(logging.DEBUG)
+
+# 添加控制台handler，用于输出日志到控制台
+console_handler = logging.StreamHandler()
+# 日志输出到系统
+# console_handler = logging.StreamHandler(stream=None）
+# 添加日志文件handler，用于输出日志到文件中
+#file_handler = logging.FileHandler(filename='logs/{}.log'.format(self.name), encoding='UTF-8', when='H', interval=6, backupCount=4)
+file_handler = TimedRotatingFileHandler(filename='logs/{}.log'.format('ETHBTC'), encoding='UTF-8', when='H', interval=6, backupCount=4)
+
+# 将handler添加到日志器中
+#logger.addHandler(console_handler)
+logger.addHandler(file_handler)
+
+# 设置格式并赋予handler
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+console_handler.setFormatter(formatter)
+file_handler.setFormatter(formatter)
+
 def on_open(self):
     subscribe_message = {"method": "SUBSCRIBE","params": ["btcusdt@depth@1000ms"],"id": 1}
     ws.send(json.dumps(subscribe_message))
 def on_message(self, message):
-    print(message)
+    logger.info(message)
 def on_close(self):
     print("closed connection")
 
@@ -109,30 +133,6 @@ class GridStrategy(Process):
         if not os.path.exists('logs'):
             os.mkdir('logs')
 
-        # 创建日志器对象
-        ######################################## Logging __name__ #######################################
-        self.logger = logging.getLogger(self.name)
-
-        # 设置logger可输出日志级别范围
-        self.logger.setLevel(logging.DEBUG)
-
-        # 添加控制台handler，用于输出日志到控制台
-        console_handler = logging.StreamHandler()
-        # 日志输出到系统
-        # console_handler = logging.StreamHandler(stream=None）
-        # 添加日志文件handler，用于输出日志到文件中
-        #file_handler = logging.FileHandler(filename='logs/{}.log'.format(self.name), encoding='UTF-8', when='H', interval=6, backupCount=4)
-        file_handler = TimedRotatingFileHandler(filename='logs/{}.log'.format(self.name), encoding='UTF-8', when='H', interval=6, backupCount=4)
-
-        # 将handler添加到日志器中
-        #logger.addHandler(console_handler)
-        self.logger.addHandler(file_handler)
-
-        # 设置格式并赋予handler
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        console_handler.setFormatter(formatter)
-        file_handler.setFormatter(formatter)
-
     def read_conf(self, symbol):
         """
         获取开仓币种初始参数
@@ -164,10 +164,10 @@ class GridStrategy(Process):
         # trade.set_leverage(self.symbol, self.ratio).json()
         # 设置当前启动时间
         self.redisClient.setKey("{}_t_start_{}".format(self.token, self.direction), time.time())
-        self.logger.info('{} U本位开始运行 \t {} \t #################'.format(self.symbol, PublicModels.changeTime(time.time())))
+        logger.info('{} U本位开始运行 \t {} \t #################'.format(self.symbol, PublicModels.changeTime(time.time())))
 
-        # p1 = Process(target=getWS)
-        # p1.start()
+        p1 = Process(target=getWS)
+        p1.start()
 
         while True:
             time.sleep(1)
