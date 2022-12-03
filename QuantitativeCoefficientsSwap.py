@@ -144,11 +144,6 @@ class GridStrategy(Process):
         self.min_profit = arg_data['min_profit'] / 100
         self.ratio = arg_data['ratio']
 
-    def getWS(self):
-        socket='wss://fstream.binance.com/ws'
-        ws = websocket.WebSocketApp(socket, on_open=on_open, on_message=on_message)
-        ws.run_forever()
-
     def run(self):
         # # 获取一个 Binance API 对象
         # trade = tradeAPI.TradeApi(self.key, self.secret)
@@ -166,8 +161,9 @@ class GridStrategy(Process):
         self.redisClient.setKey("{}_t_start_{}".format(self.token, self.direction), time.time())
         logger.info('{} U本位开始运行 \t {} \t #################'.format(self.symbol, PublicModels.changeTime(time.time())))
 
-        p1 = Process(target=getWS)
+        p1 = Process(target=self.getWS)
         p1.start()
+        p1.join()
 
         while True:
             time.sleep(1)
