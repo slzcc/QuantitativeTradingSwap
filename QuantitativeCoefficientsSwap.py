@@ -56,7 +56,7 @@ class GridStrategy(Process):
         self.secret = secret            # 用户凭证
         self.name = 'ETHBTC'            # 开单名称
         self.symbol =  'ETHBTC'
-        self.read_conf(symbol)
+        self.read_conf(self.symbol)
 
         # 初始化 Redis 默认数据
         # 获取最新价格 btc/usdt
