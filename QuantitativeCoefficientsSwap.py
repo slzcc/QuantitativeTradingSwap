@@ -70,7 +70,7 @@ class GridStrategy(Process):
 
         # 获取下单池 btc/usdt
         if not self.redisClient.getKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction)):
-            self.redisClient.setKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction), [])
+            self.redisClient.setKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction), '[]')
 
         # 获取最新价格 eth/usdt
         if not self.redisClient.getKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction)):
@@ -82,7 +82,7 @@ class GridStrategy(Process):
 
         # 获取下单池 eth/usdt
         if not self.redisClient.getKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction)):
-            self.redisClient.setKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction), [])
+            self.redisClient.setKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction), '[]')
 
         # 获取最新价格 eth/BTCUSDT多
         if not self.redisClient.getKey("{}_spot_eth@btc_present_price_{}".format(self.token, self.direction)):
@@ -94,7 +94,7 @@ class GridStrategy(Process):
 
         # 获取下单池 eth/btc
         if not self.redisClient.getKey("{}_spot_eth@btc_order_pool_{}".format(self.token, self.direction)):
-            self.redisClient.setKey("{}_spot_eth@btc_order_pool_{}".format(self.token, self.direction), [])
+            self.redisClient.setKey("{}_spot_eth@btc_order_pool_{}".format(self.token, self.direction), '[]')
 
         # timestamp default
         # 记录当前运行时间
@@ -166,8 +166,8 @@ class GridStrategy(Process):
         self.redisClient.setKey("{}_t_start_{}".format(self.token, self.direction), time.time())
         self.logger.info('{} U本位开始运行 \t {} \t #################'.format(self.symbol, PublicModels.changeTime(time.time())))
 
-        p1 = Process(target=getWS)
-        p1.start()
+        # p1 = Process(target=getWS)
+        # p1.start()
 
         while True:
             time.sleep(1)
