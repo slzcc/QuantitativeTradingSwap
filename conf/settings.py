@@ -11,19 +11,24 @@
 #***********************************************
 
 # API 类型
-#API_TYPE = "Binance"
-API_TYPE = "BinanceTestNet"
+API_TYPE = "Binance"
+# API_TYPE = "BinanceTestNet"
 
 # 判定当前接口类型
 if API_TYPE == "Binance":
     # 正式网络
     FUTURE_URL = "https://fapi.binance.com"
     SPOT_URL = "https://api.binance.com/api/v3"
+    # Docs https://binance-docs.github.io/apidocs/spot/cn/#websocket
+    FUTURE_WS = "wss://fstream.binance.com/ws"
+    SPOT_WS = "wss://stream.binance.com:9443/ws"
 elif API_TYPE == "BinanceTestNet":
     # 测试网络
     # View https://testnet.binancefuture.com/en/futures/BTCUSDT
     FUTURE_URL = "https://testnet.binancefuture.com"
     SPOT_URL = "https://testnet.binance.vision/api/v3"
+    FUTURE_WS = ""
+    SPOT_WS = ""
 
 # binance 当前发送请求的有效毫秒数
 # https://binance-docs.github.io/apidocs/spot/en/#signed-trade-user_data-and-margin-endpoint-security

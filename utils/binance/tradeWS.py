@@ -12,43 +12,23 @@
 
 import json
 import websocket
+# from conf.settings import *
 
 # 行情 ws
 # Docs https://binance-docs.github.io/apidocs/spot/cn/#websocket
-socket='wss://stream.binance.com:9443/ws'
+## 现货 U 本位 WS
+#socket='wss://stream.binance.com:9443/ws'
+## 现货 B 本位 WS
 #socket='wss://dstream.binance.com:9443/ws'
+## 合约 U 本位 WS
+socket='wss://fstream.binance.com/ws'
 
 def on_open(self):
-    # subscribe_message = {
-    #     "method": "SUBSCRIBE",
-    #     "params":
-    #     [
-    #      "btcusdt@depth@100ms"
-    #      ],
-    #     "id": 1
-    #     }
-    # subscribe_message = {
-    #     "method": "SUBSCRIBE",
-    #     "params":
-    #     [
-    #     "btcusdt@aggTrade",
-    #     "btcusdt@depth"
-    #     ],
-    #     "id": 1
-    #     }
-    subscribe_message = {
-        "method": "SUBSCRIBE",
-        "params":
-        [
-        "btcusdt@kline_1m",
-        ],
-        "id": 1
-        }
-
+    subscribe_message = {"method": "SUBSCRIBE","params": ["btcusdt@depth@1000ms"],"id": 1}
     ws.send(json.dumps(subscribe_message))
 
 def on_message(self, message):
-    print("received a message", message)
+    print(message)
 def on_close(self):
     print("closed connection")
 

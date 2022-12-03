@@ -4,3 +4,4 @@ matplotlib
 pandas
 redis
 PyDecimal
+websocket-client
