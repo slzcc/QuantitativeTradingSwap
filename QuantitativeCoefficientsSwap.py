@@ -56,6 +56,7 @@ class GridStrategy(Process):
         self.secret = secret            # 用户凭证
         self.name = 'ETHBTC'            # 开单名称
         self.symbol =  'ETHBTC'
+        self.direction = 'coefficient'
         self.read_conf(self.symbol)
 
         # 初始化 Redis 默认数据
