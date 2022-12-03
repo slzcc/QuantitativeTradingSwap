@@ -66,8 +66,4 @@ __pycache__
 test
 
 # QTS
-conf/*
-/conf/*
-/conf/authentication.json
-/conf/gridSymbol.json
-/conf/swapSymbol.json
+# conf/*
