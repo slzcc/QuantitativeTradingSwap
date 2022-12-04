@@ -56,13 +56,17 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 console_handler.setFormatter(formatter)
 file_handler.setFormatter(formatter)
 
-def on_open(self):
-    subscribe_message = {"method": "SUBSCRIBE","params": ["btcusdt@depth@1000ms"],"id": 1}
-    ws.send(json.dumps(subscribe_message))
-def on_message(self, message):
-    logger.info(message)
-def on_close(self):
-    print("closed connection")
+
+redisClient = redisMethod.redisUtils()
+
+# def on_open(self):
+#     subscribe_message = {"method": "SUBSCRIBE","params": ["btcusdt@kline_1m"], "id": 1}
+#     ws.send(json.dumps(subscribe_message))
+# def on_message(self, message):
+#     print(message)
+#     logger.info(message)
+# def on_close(self):
+#     print("closed connection")
 
 class GridStrategy(Process):
     def __init__(self, key, secret, token, market=False):
@@ -108,7 +112,7 @@ class GridStrategy(Process):
         if not self.redisClient.getKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction)):
             self.redisClient.setKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction), '[]')
 
-        # 获取最新价格 eth/BTCUSDT多
+        # 获取最新价格 eth/btc
         if not self.redisClient.getKey("{}_spot_eth@btc_present_price_{}".format(self.token, self.direction)):
             self.redisClient.setKey("{}_spot_eth@btc_present_price_{}".format(self.token, self.direction), 0.0)
 
@@ -144,6 +148,29 @@ class GridStrategy(Process):
         self.min_profit = arg_data['min_profit'] / 100
         self.ratio = arg_data['ratio']
 
+    def on_open(self, ws):
+        subscribe_message = {"method": "SUBSCRIBE", "params": ["btcusdt@kline_1m"], "id": 1}
+        ws.send(json.dumps(subscribe_message))
+
+    def on_message(self, message):
+        print(message)
+        logger.info(message)
+        if "e" in message.keys():
+            # 价格设置
+            self.redisClient.setKey("{}_spot_eth@btc_present_price_{}".format(self.token, self.direction), message["k"]["c"])
+
+    def on_close(self):
+        print("closed connection")
+
+    def getWS(self):
+        logger.info('开始')
+        while True:
+            logger.info('过程')
+            socket='wss://fstream.binance.com/ws'
+            ws = websocket.WebSocketApp(socket, on_open=self.on_open, on_message=self.on_message)
+            ws.run_forever()
+        logger.info('结束')
+
     def run(self):
         # # 获取一个 Binance API 对象
         # trade = tradeAPI.TradeApi(self.key, self.secret)
@@ -163,7 +190,6 @@ class GridStrategy(Process):
 
         p1 = Process(target=self.getWS)
         p1.start()
-        p1.join()
 
         while True:
             time.sleep(1)
