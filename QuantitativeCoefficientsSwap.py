@@ -56,20 +56,12 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 console_handler.setFormatter(formatter)
 file_handler.setFormatter(formatter)
 
-
 redisClient = redisMethod.redisUtils()
 
-def on_open(ws):
-    subscribe_message = {"method": "SUBSCRIBE","params": ["btcusdt@kline_1m"], "id": 1}
-    ws.send(json.dumps(subscribe_message))
-def on_message(ws, message):
-    print(message)
-    logger.info(message)
-def on_close(ws):
-    print("closed connection")
+# websocket.enableTrace(True)
 
 class GridStrategy(Process):
-    def __init__(self, key, secret, token, market=False):
+    def __init__(self, key, secret, token):
         """
         :param symbol: BTCUSDT多
         :param key   : AccessKey
@@ -148,29 +140,63 @@ class GridStrategy(Process):
         self.min_profit = arg_data['min_profit'] / 100
         self.ratio = arg_data['ratio']
 
-    # def on_open(self, ws):
-    #     subscribe_message = {"method": "SUBSCRIBE", "params": ["btcusdt@kline_1m"], "id": 1}
-    #     ws.send(json.dumps(subscribe_message))
-    #
-    # def on_message(self, message):
-    #     print(message)
-    #     logger.info(message)
-    #     if "e" in message.keys():
-    #         # 价格设置
-    #         self.redisClient.setKey("{}_spot_eth@btc_present_price_{}".format(self.token, self.direction), message["k"]["c"])
-    #
-    # def on_close(self):
-    #     print("closed connection")
+    def on_open_binance_btcusdt_kline(self, ws):
+        subscribe_message = {"method": "SUBSCRIBE", "params": ["btcusdt@kline_1m"], "id": 1}
+        ws.send(json.dumps(subscribe_message))
+    def on_message_binance_btcusdt_kline(self, ws, message):
+        try:
+            _message = json.loads(message)
+        except Exception as err:
+            _message = {}
+        if "e" in _message.keys():
+            # 价格设置
+            self.redisClient.setKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction), _message["k"]["c"])
+    def on_open_binance_ethusdt_kline(self, ws):
+        subscribe_message = {"method": "SUBSCRIBE", "params": ["ethusdt@kline_1m"], "id": 1}
+        ws.send(json.dumps(subscribe_message))
+    def on_message_binance_ethusdt_kline(self, ws, message):
+        try:
+            _message = json.loads(message)
+        except Exception as err:
+            _message = {}
+        if "e" in _message.keys():
+            # 价格设置
+            self.redisClient.setKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction), _message["k"]["c"])
+    def on_open_binance_ethbtc_kline(self, ws):
+        subscribe_message = {"method": "SUBSCRIBE", "params": ["ethbtc@kline_1m"], "id": 1}
+        ws.send(json.dumps(subscribe_message))
+    def on_message_binance_ethbtc_kline(self, ws, message):
+        try:
+            _message = json.loads(message)
+        except Exception as err:
+            _message = {}
+        if "e" in _message.keys():
+            # 价格设置
+            self.redisClient.setKey("{}_spot_eth@btc_present_price_{}".format(self.token, self.direction), _message["k"]["c"])
+    def on_close(self):
+        print("closed connection")
 
-    def getWS(self):
-        logger.info('开始')
+    def getBinanceBtcUsdtKlineWS(self):
         while True:
-            logger.info('过程')
-            socket='wss://fstream.binance.com/ws'
-            ws = websocket.WebSocketApp(socket, on_open=on_open, on_message=on_message)
-            ws.run_forever()
-        logger.info('结束')
-
+            try:
+                ws = websocket.WebSocketApp(FUTURE_WS, on_open=self.on_open_binance_btcusdt_kline, on_message=self.on_message_binance_btcusdt_kline)
+                ws.run_forever()
+            except Exception as err:
+                logger.error("异常错误: {}".format(err))
+    def getBinanceEthUsdtKlineWS(self):
+        while True:
+            try:
+                ws = websocket.WebSocketApp(FUTURE_WS, on_open=self.on_open_binance_ethusdt_kline, on_message=self.on_message_binance_ethusdt_kline)
+                ws.run_forever()
+            except Exception as err:
+                logger.error("异常错误: {}".format(err))
+    def getBinanceEthBtcKlineWS(self):
+        while True:
+            try:
+                ws = websocket.WebSocketApp(SPOT_WS, on_open=self.on_open_binance_ethbtc_kline, on_message=self.on_message_binance_ethbtc_kline)
+                ws.run_forever()
+            except Exception as err:
+                logger.error("异常错误: {}".format(err))
     def run(self):
         # # 获取一个 Binance API 对象
         # trade = tradeAPI.TradeApi(self.key, self.secret)
@@ -188,8 +214,12 @@ class GridStrategy(Process):
         self.redisClient.setKey("{}_t_start_{}".format(self.token, self.direction), time.time())
         logger.info('{} U本位开始运行 \t {} \t #################'.format(self.symbol, PublicModels.changeTime(time.time())))
 
-        p1 = Process(target=self.getWS)
+        p1 = Process(target=self.getBinanceBtcUsdtKlineWS)
+        p2 = Process(target=self.getBinanceEthUsdtKlineWS)
+        p3 = Process(target=self.getBinanceEthBtcKlineWS)
         p1.start()
+        p2.start()
+        p3.start()
 
         while True:
             time.sleep(1)
