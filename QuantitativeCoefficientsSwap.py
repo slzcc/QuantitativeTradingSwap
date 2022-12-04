@@ -89,8 +89,8 @@ class GridStrategy(Process):
             self.redisClient.setKey("{}_futures_btc@usdt_last_trade_price_{}".format(self.token, self.direction), 0.0)
 
         # 获取下单池 btc/usdt
-        if not self.redisClient.getKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction)):
-            self.redisClient.setKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction), '[]')
+        if not self.redisClient.getKey("{}_futures_btc@usdt_order_pool_{}".format(self.token, self.direction)):
+            self.redisClient.setKey("{}_futures_btc@usdt_order_pool_{}".format(self.token, self.direction), '[]')
 
         # 获取最新价格 eth/usdt
         if not self.redisClient.getKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction)):
@@ -101,8 +101,8 @@ class GridStrategy(Process):
             self.redisClient.setKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction), 0.0)
 
         # 获取下单池 eth/usdt
-        if not self.redisClient.getKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction)):
-            self.redisClient.setKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction), '[]')
+        if not self.redisClient.getKey("{}_futures_eth@usdt_order_pool_{}".format(self.token, self.direction)):
+            self.redisClient.setKey("{}_futures_eth@usdt_order_pool_{}".format(self.token, self.direction), '[]')
 
         # 获取最新价格 eth/btc
         if not self.redisClient.getKey("{}_spot_eth@btc_present_price_{}".format(self.token, self.direction)):
@@ -148,9 +148,11 @@ class GridStrategy(Process):
             _message = json.loads(message)
         except Exception as err:
             _message = {}
+            logger.error("异常错误: {}".format(err))
         if "e" in _message.keys():
             # 价格设置
             self.redisClient.setKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction), _message["k"]["c"])
+
     def on_open_binance_ethusdt_kline(self, ws):
         subscribe_message = {"method": "SUBSCRIBE", "params": ["ethusdt@kline_1m"], "id": 1}
         ws.send(json.dumps(subscribe_message))
@@ -159,9 +161,11 @@ class GridStrategy(Process):
             _message = json.loads(message)
         except Exception as err:
             _message = {}
+            logger.error("异常错误: {}".format(err))
         if "e" in _message.keys():
             # 价格设置
             self.redisClient.setKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction), _message["k"]["c"])
+
     def on_open_binance_ethbtc_kline(self, ws):
         subscribe_message = {"method": "SUBSCRIBE", "params": ["ethbtc@kline_1m"], "id": 1}
         ws.send(json.dumps(subscribe_message))
@@ -170,9 +174,11 @@ class GridStrategy(Process):
             _message = json.loads(message)
         except Exception as err:
             _message = {}
+            logger.error("异常错误: {}".format(err))
         if "e" in _message.keys():
             # 价格设置
             self.redisClient.setKey("{}_spot_eth@btc_present_price_{}".format(self.token, self.direction), _message["k"]["c"])
+
     def on_close(self):
         print("closed connection")
 
@@ -198,18 +204,18 @@ class GridStrategy(Process):
             except Exception as err:
                 logger.error("异常错误: {}".format(err))
     def run(self):
-        # # 获取一个 Binance API 对象
-        # trade = tradeAPI.TradeApi(self.key, self.secret)
-        # # 更改持仓方式，默认单向
-        # checkAccount = trade.change_side(False).json()
-        # if "code" in checkAccount.keys():
-        #     if checkAccount["code"] != -4059:
-        #         raise AssertionError("账户凭证存在异常, 返回内容 {}, 请检查后继续! 可能犹豫超时导致的时间加密数据超出认证时间导致.".format(checkAccount))
+        # 获取一个 Binance API 对象
+        trade = tradeAPI.TradeApi(self.key, self.secret)
+        # 更改持仓方式，默认单向
+        checkAccount = trade.change_side(False).json()
+        if "code" in checkAccount.keys():
+            if checkAccount["code"] != -4059:
+                raise AssertionError("账户凭证存在异常, 返回内容 {}, 请检查后继续! 可能犹豫超时导致的时间加密数据超出认证时间导致.".format(checkAccount))
 
-        # # 变换逐全仓, 默认逐仓
-        # trade.change_margintype(self.symbol, isolated=False).json()
-        # # 调整开仓杠杆
-        # trade.set_leverage(self.symbol, self.ratio).json()
+        # 变换逐全仓, 默认逐仓
+        trade.change_margintype(self.symbol, isolated=False).json()
+        # 调整开仓杠杆
+        trade.set_leverage(self.symbol, self.ratio).json()
         # 设置当前启动时间
         self.redisClient.setKey("{}_t_start_{}".format(self.token, self.direction), time.time())
         logger.info('{} U本位开始运行 \t {} \t #################'.format(self.symbol, PublicModels.changeTime(time.time())))
@@ -222,8 +228,44 @@ class GridStrategy(Process):
         p3.start()
 
         while True:
-            time.sleep(1)
             print(1)
+            time.sleep(1)
+            # 判断下单池是否为空
+            btc_usdt_order_pool = json.loads(self.redisClient.getKey("{}_futures_btc@usdt_order_pool_{}".format(self.token, self.direction)))
+            eth_usdt_order_pool = json.loads(self.redisClient.getKey("{}_futures_eth@usdt_order_pool_{}".format(self.token, self.direction)))
+            if len(btc_usdt_order_pool) == 0 and len(eth_usdt_order_pool) == 0:
+                # 如果没有被下单则进行第一次下单
+                ## BTC/USDT 开单
+                resOrder = trade.open_order('BTCUSDT', 'BUY', self.min_qty, price=None, positionSide='LONG').json()
+                if not 'orderId' in resOrder.keys():
+                    if resOrder['msg'] == 'Margin is insufficient.':
+                        logger.info('%s 建仓失败, 可用金不足 \t %s \t %s' % ('BTCUSDT', str(resOrder), PublicModels.changeTime(time.time())))
+                    else:
+                        logger.info('%s 建仓失败 \t %s \t %s' % ('BTCUSDT', str(resOrder), PublicModels.changeTime(time.time())))
+                    continue
+                else:
+                    logger.info('{} 建仓成功'.format('BTCUSDT'))
+                    # 记录下单价格
+                    self.redisClient.setKey("{}_futures_btc@usdt_last_trade_price_{}".format(self.token, self.direction), self.redisClient.getKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction)))
+                    # 记录下单池
+                    btc_usdt_order_pool.append(self.min_qty)
+                    self.redisClient.setKey("{}_futures_btc@usdt_order_pool_{}".format(self.token, self.direction), json.dumps(btc_usdt_order_pool))
+                ## ETH/USDT 开单
+                resOrder = trade.open_order('ETHUSDT', 'SELL', self.min_qty, price=None, positionSide='SHORT').json()
+                if not 'orderId' in resOrder.keys():
+                    if resOrder['msg'] == 'Margin is insufficient.':
+                        logger.info('%s 建仓失败, 可用金不足 \t %s \t %s' % ('ETHUSDT', str(resOrder), PublicModels.changeTime(time.time())))
+                    else:
+                        logger.info('%s 建仓失败 \t %s \t %s' % ('ETHUSDT', str(resOrder), PublicModels.changeTime(time.time())))
+                    continue
+                else:
+                    logger.info('{} 建仓成功'.format('ETHUSDT'))
+                    # 记录下单价格
+                    self.redisClient.setKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction), self.redisClient.getKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction)))
+                    # 记录下单池
+                    eth_usdt_order_pool.append(self.min_qty)
+                    self.redisClient.setKey("{}_futures_eth@usdt_order_pool_{}".format(self.token, self.direction), json.dumps(eth_usdt_order_pool))
+            print(2)
 
 if __name__ == '__main__':
     args = command_line_args(sys.argv[1:])
