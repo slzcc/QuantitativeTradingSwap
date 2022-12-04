@@ -59,14 +59,14 @@ file_handler.setFormatter(formatter)
 
 redisClient = redisMethod.redisUtils()
 
-# def on_open(self):
-#     subscribe_message = {"method": "SUBSCRIBE","params": ["btcusdt@kline_1m"], "id": 1}
-#     ws.send(json.dumps(subscribe_message))
-# def on_message(self, message):
-#     print(message)
-#     logger.info(message)
-# def on_close(self):
-#     print("closed connection")
+def on_open(ws):
+    subscribe_message = {"method": "SUBSCRIBE","params": ["btcusdt@kline_1m"], "id": 1}
+    ws.send(json.dumps(subscribe_message))
+def on_message(ws, message):
+    print(message)
+    logger.info(message)
+def on_close(ws):
+    print("closed connection")
 
 class GridStrategy(Process):
     def __init__(self, key, secret, token, market=False):
@@ -148,26 +148,26 @@ class GridStrategy(Process):
         self.min_profit = arg_data['min_profit'] / 100
         self.ratio = arg_data['ratio']
 
-    def on_open(self, ws):
-        subscribe_message = {"method": "SUBSCRIBE", "params": ["btcusdt@kline_1m"], "id": 1}
-        ws.send(json.dumps(subscribe_message))
-
-    def on_message(self, message):
-        print(message)
-        logger.info(message)
-        if "e" in message.keys():
-            # 价格设置
-            self.redisClient.setKey("{}_spot_eth@btc_present_price_{}".format(self.token, self.direction), message["k"]["c"])
-
-    def on_close(self):
-        print("closed connection")
+    # def on_open(self, ws):
+    #     subscribe_message = {"method": "SUBSCRIBE", "params": ["btcusdt@kline_1m"], "id": 1}
+    #     ws.send(json.dumps(subscribe_message))
+    #
+    # def on_message(self, message):
+    #     print(message)
+    #     logger.info(message)
+    #     if "e" in message.keys():
+    #         # 价格设置
+    #         self.redisClient.setKey("{}_spot_eth@btc_present_price_{}".format(self.token, self.direction), message["k"]["c"])
+    #
+    # def on_close(self):
+    #     print("closed connection")
 
     def getWS(self):
         logger.info('开始')
         while True:
             logger.info('过程')
             socket='wss://fstream.binance.com/ws'
-            ws = websocket.WebSocketApp(socket, on_open=self.on_open, on_message=self.on_message)
+            ws = websocket.WebSocketApp(socket, on_open=on_open, on_message=on_message)
             ws.run_forever()
         logger.info('结束')
 
