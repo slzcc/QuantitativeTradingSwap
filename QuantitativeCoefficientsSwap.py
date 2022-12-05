@@ -228,7 +228,7 @@ class GridStrategy(Process):
         p3.start()
 
         while True:
-            time.sleep(1)
+            time.sleep(0.3)
             # 判断下单池是否为空
             btc_usdt_order_pool = json.loads(self.redisClient.getKey("{}_futures_btc@usdt_order_pool_{}".format(self.token, self.direction)))
             eth_usdt_order_pool = json.loads(self.redisClient.getKey("{}_futures_eth@usdt_order_pool_{}".format(self.token, self.direction)))
