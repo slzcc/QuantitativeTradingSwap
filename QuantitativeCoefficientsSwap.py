@@ -136,7 +136,7 @@ class GridStrategy(Process):
         arg_data = json.load(open('conf/coefficientSymbol.json'))[symbol]
         self.price_precision = arg_data['price_precision']
         self.min_qty = arg_data['min_qty']
-        self.profit = arg_data['profit'] / 100
+        self.profit = arg_data['profit']
         self.min_profit = arg_data['min_profit'] / 100
         self.ratio = arg_data['ratio']
 
