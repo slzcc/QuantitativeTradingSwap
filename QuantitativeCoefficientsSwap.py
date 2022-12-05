@@ -228,7 +228,6 @@ class GridStrategy(Process):
         p3.start()
 
         while True:
-            print(1)
             time.sleep(1)
             # 判断下单池是否为空
             btc_usdt_order_pool = json.loads(self.redisClient.getKey("{}_futures_btc@usdt_order_pool_{}".format(self.token, self.direction)))
@@ -252,7 +251,8 @@ class GridStrategy(Process):
                     self.redisClient.setKey("{}_futures_btc@usdt_order_pool_{}".format(self.token, self.direction), json.dumps(btc_usdt_order_pool))
                 ## 基于 BTC 开仓数量，计算出 ETH 需要的开仓数量
                 ## ETH/USDT 开单(最小下单量 0.004)
-                ethUsdtOrderQuantity = float('%.3f' % float(self.redisClient.getKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction))) * self.min_qty / float(self.redisClient.getKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction))))
+                _ethUsdtOrderQuantity = float(self.redisClient.getKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction))) * self.min_qty / float(self.redisClient.getKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction)))
+                ethUsdtOrderQuantity = float('%.3f' % _ethUsdtOrderQuantity)
                 resOrder = trade.open_order('ETHUSDT', 'SELL', ethUsdtOrderQuantity, price=None, positionSide='SHORT').json()
                 if not 'orderId' in resOrder.keys():
                     if resOrder['msg'] == 'Margin is insufficient.':
@@ -267,16 +267,59 @@ class GridStrategy(Process):
                     # 记录下单池
                     eth_usdt_order_pool.append(self.min_qty)
                     self.redisClient.setKey("{}_futures_eth@usdt_order_pool_{}".format(self.token, self.direction), json.dumps(eth_usdt_order_pool))
+                # 记录下单时间
+                self.redisClient.setKey("{}_last_order_time_{}".format(self.token, self.direction), time.time())
                 # ETHBTC
-                # 记录下单价格
+                ## 记录下单价格
                 self.redisClient.setKey("{}_spot_eth@btc_last_trade_price_{}".format(self.token, self.direction),
                                         self.redisClient.getKey("{}_spot_eth@btc_present_price_{}".format(self.token, self.direction)))
-                # 记录下单池
-                btc_usdt_order_pool.append(self.min_qty)
+                ## 记录下单池
                 self.redisClient.setKey("{}_spot_eth@btc_order_pool_{}".format(self.token, self.direction),
-                                        json.dumps(btc_usdt_order_pool))
-
-            print(2)
+                                        self.redisClient.getKey("{}_spot_eth@btc_present_price_{}".format(self.token, self.direction)))
+            else:
+                # 计算盈亏百分比
+                ## BTC 当前价格
+                btc_usdt_present_price = float(self.redisClient.getKey(
+                    "{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction)))
+                ## BTC 最后下单价格
+                btc_usdt_last_trade_price = float(self.redisClient.getKey(
+                    "{}_futures_btc@usdt_last_trade_price_{}".format(self.token, self.direction)))
+                ## ETH 当前价格
+                eth_usdt_present_price = float(self.redisClient.getKey(
+                    "{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction)))
+                ## ETH 最后下单价格
+                eth_usdt_last_trade_price = float(self.redisClient.getKey(
+                    "{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction)))
+                # 判定如果大于 profit 则进行清仓
+                ## BTCUSDT 盈亏百分比
+                btc_usdt_profi_loss = (btc_usdt_present_price - btc_usdt_last_trade_price) / btc_usdt_present_price * self.ratio * 100
+                ## ETHUSDT 盈亏百分比
+                eth_usdt_profi_loss = ((eth_usdt_present_price - eth_usdt_last_trade_price) / eth_usdt_present_price * self.ratio * 100)
+                if (btc_usdt_profi_loss + eth_usdt_profi_loss) >= self.profit:
+                    ## BTC/USDT 清仓
+                    resOrder = trade.open_order('BTCUSDT', 'SELL', float(sum([Decimal(item) for item in json.loads(self.redisClient.getKey("{}_futures_btc@usdt_order_pool_{}".format(self.token, self.direction)))])), price=None, positionSide='LONG').json()
+                    if not 'orderId' in resOrder.keys():
+                        logger.info('%s 清仓失败 \t %s \t %s' % ('BTCUSDT', str(resOrder), PublicModels.changeTime(time.time())))
+                        continue
+                    else:
+                        logger.info('{} 清仓成功'.format('BTCUSDT'))
+                        # 清除下单价格
+                        self.redisClient.setKey("{}_futures_btc@usdt_last_trade_price_{}".format(self.token, self.direction), 0.0)
+                        # 清除下单池
+                        self.redisClient.setKey("{}_futures_btc@usdt_order_pool_{}".format(self.token, self.direction), '[]')
+                    ## ETH/USDT 清仓
+                    resOrder = trade.open_order('ETHUSDT', 'BUY', float(sum([Decimal(item) for item in json.loads(self.redisClient.getKey("{}_futures_eth@usdt_order_pool_{}".format(self.token, self.direction)))])), price=None, positionSide='SHORT').json()
+                    if not 'orderId' in resOrder.keys():
+                        logger.info('%s 清仓失败 \t %s \t %s' % ('ETHUSDT', str(resOrder), PublicModels.changeTime(time.time())))
+                        continue
+                    else:
+                        logger.info('{} 清仓成功'.format('ETHUSDT'))
+                        # 清除下单价格
+                        self.redisClient.setKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction), 0.0)
+                        # 清除下单池
+                        self.redisClient.setKey("{}_futures_eth@usdt_order_pool_{}".format(self.token, self.direction), '[]')
+                else:
+                    logger.info('当前 BTCUSDT 盈损比例 {}, ETHUSDT 盈损比例 {}, 合计 {}'.format(btc_usdt_profi_loss, eth_usdt_profi_loss, btc_usdt_profi_loss + eth_usdt_profi_loss))
 
 if __name__ == '__main__':
     args = command_line_args(sys.argv[1:])
