@@ -296,6 +296,9 @@ class GridStrategy(Process):
                 ## ETHUSDT 盈亏百分比
                 eth_usdt_profi_loss = ((eth_usdt_present_price - eth_usdt_last_trade_price) / eth_usdt_present_price * self.ratio * 100)
                 if (btc_usdt_profi_loss + eth_usdt_profi_loss) >= self.profit:
+                    logger.info('准备清仓, 当前 BTCUSDT 盈损比例 {}, ETHUSDT 盈损比例 {}, 合计 {}'.format(btc_usdt_profi_loss,
+                                                                                                eth_usdt_profi_loss,
+                                                                                                btc_usdt_profi_loss + eth_usdt_profi_loss))
                     ## BTC/USDT 清仓
                     resOrder = trade.open_order('BTCUSDT', 'SELL', float(sum([Decimal(item) for item in json.loads(self.redisClient.getKey("{}_futures_btc@usdt_order_pool_{}".format(self.token, self.direction)))])), price=None, positionSide='LONG').json()
                     if not 'orderId' in resOrder.keys():
@@ -319,7 +322,7 @@ class GridStrategy(Process):
                         # 清除下单池
                         self.redisClient.setKey("{}_futures_eth@usdt_order_pool_{}".format(self.token, self.direction), '[]')
                 else:
-                    logger.info('当前 BTCUSDT 盈损比例 {}, ETHUSDT 盈损比例 {}, 合计 {}'.format(btc_usdt_profi_loss, eth_usdt_profi_loss, btc_usdt_profi_loss + eth_usdt_profi_loss))
+                    logger.info('持续监听, 当前 BTCUSDT 盈损比例 {}, ETHUSDT 盈损比例 {}, 合计 {}'.format(btc_usdt_profi_loss, eth_usdt_profi_loss, btc_usdt_profi_loss + eth_usdt_profi_loss))
 
 if __name__ == '__main__':
     args = command_line_args(sys.argv[1:])
