@@ -235,7 +235,7 @@ class GridStrategy(Process):
             eth_usdt_order_pool = json.loads(self.redisClient.getKey("{}_futures_eth@usdt_order_pool_{}".format(self.token, self.direction)))
             if len(btc_usdt_order_pool) == 0 and len(eth_usdt_order_pool) == 0:
                 # 如果没有被下单则进行第一次下单
-                ## BTC/USDT 开单
+                ## BTC/USDT 开单(最小下单量 0.001)
                 resOrder = trade.open_order('BTCUSDT', 'BUY', self.min_qty, price=None, positionSide='LONG').json()
                 if not 'orderId' in resOrder.keys():
                     if resOrder['msg'] == 'Margin is insufficient.':
@@ -250,8 +250,10 @@ class GridStrategy(Process):
                     # 记录下单池
                     btc_usdt_order_pool.append(self.min_qty)
                     self.redisClient.setKey("{}_futures_btc@usdt_order_pool_{}".format(self.token, self.direction), json.dumps(btc_usdt_order_pool))
-                ## ETH/USDT 开单
-                resOrder = trade.open_order('ETHUSDT', 'SELL', self.min_qty, price=None, positionSide='SHORT').json()
+                ## 基于 BTC 开仓数量，计算出 ETH 需要的开仓数量
+                ## ETH/USDT 开单(最小下单量 0.004)
+                ethUsdtOrderQuantity = float('%.3f' % float(self.redisClient.getKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction))) * self.min_qty / float(self.redisClient.getKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction))))
+                resOrder = trade.open_order('ETHUSDT', 'SELL', ethUsdtOrderQuantity, price=None, positionSide='SHORT').json()
                 if not 'orderId' in resOrder.keys():
                     if resOrder['msg'] == 'Margin is insufficient.':
                         logger.info('%s 建仓失败, 可用金不足 \t %s \t %s' % ('ETHUSDT', str(resOrder), PublicModels.changeTime(time.time())))
@@ -265,6 +267,15 @@ class GridStrategy(Process):
                     # 记录下单池
                     eth_usdt_order_pool.append(self.min_qty)
                     self.redisClient.setKey("{}_futures_eth@usdt_order_pool_{}".format(self.token, self.direction), json.dumps(eth_usdt_order_pool))
+                # ETHBTC
+                # 记录下单价格
+                self.redisClient.setKey("{}_spot_eth@btc_last_trade_price_{}".format(self.token, self.direction),
+                                        self.redisClient.getKey("{}_spot_eth@btc_present_price_{}".format(self.token, self.direction)))
+                # 记录下单池
+                btc_usdt_order_pool.append(self.min_qty)
+                self.redisClient.setKey("{}_spot_eth@btc_order_pool_{}".format(self.token, self.direction),
+                                        json.dumps(btc_usdt_order_pool))
+
             print(2)
 
 if __name__ == '__main__':

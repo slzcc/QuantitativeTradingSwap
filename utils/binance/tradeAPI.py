@@ -166,14 +166,14 @@ class TradeApi:
             "type": tp,
             "recvWindow": binance_recvWindow
         }
-        if tp in ['STOP','TAKE_PROFIT']:
+        if tp in ['STOP', 'TAKE_PROFIT']:
             params["quantity"] = quantity
             params["price"] = price
             params["stopPrice"] = stopPrice
-        elif tp in ['STOP_MARKET','TAKE_PROFIT_MARKET']:
+        elif tp in ['STOP_MARKET', 'TAKE_PROFIT_MARKET']:
             params["stopPrice"] = stopPrice
-            params["closePosition"] = True  # 清仓
-        elif tp == 'TRAILING_STOP_MARKET':  # 跟踪回调
+            params["closePosition"] = True
+        elif tp == 'TRAILING_STOP_MARKET':
             params["callbackRate"] = callbackRate
             params["activationPrice"] = activationPrice
             params["quantity"] = quantity
