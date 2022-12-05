@@ -265,7 +265,7 @@ class GridStrategy(Process):
                     # 记录下单价格
                     self.redisClient.setKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction), self.redisClient.getKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction)))
                     # 记录下单池
-                    eth_usdt_order_pool.append(self.min_qty)
+                    eth_usdt_order_pool.append(ethUsdtOrderQuantity)
                     self.redisClient.setKey("{}_futures_eth@usdt_order_pool_{}".format(self.token, self.direction), json.dumps(eth_usdt_order_pool))
                 # 记录下单时间
                 self.redisClient.setKey("{}_last_order_time_{}".format(self.token, self.direction), time.time())
