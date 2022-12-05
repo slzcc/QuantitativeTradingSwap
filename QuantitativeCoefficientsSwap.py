@@ -294,7 +294,7 @@ class GridStrategy(Process):
                 ## BTCUSDT 盈亏百分比
                 btc_usdt_profi_loss = (btc_usdt_present_price - btc_usdt_last_trade_price) / btc_usdt_present_price * self.ratio * 100
                 ## ETHUSDT 盈亏百分比
-                eth_usdt_profi_loss = ((eth_usdt_present_price - eth_usdt_last_trade_price) / eth_usdt_present_price * self.ratio * 100)
+                eth_usdt_profi_loss = ((eth_usdt_last_trade_price - eth_usdt_present_price) / eth_usdt_present_price * self.ratio * 100)
                 if (btc_usdt_profi_loss + eth_usdt_profi_loss) >= self.profit:
                     logger.info('准备清仓, 当前 BTCUSDT 盈损比例 {}, ETHUSDT 盈损比例 {}, 合计 {}'.format(btc_usdt_profi_loss,
                                                                                                 eth_usdt_profi_loss,
