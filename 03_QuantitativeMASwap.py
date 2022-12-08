@@ -159,8 +159,8 @@ class GridStrategy(Process):
                 logger.error("异常错误: {}".format(err))
 
     def getBinanceSymbolHistoryKline(self, timestamp='1h', limit=500):
-        kline = get_history_k(typ='futures', coin=self.symbol, T=timestamp, limit=limit).json()
-        self._privateRedisMethod(key="_futures_{}_kline_".format(self.symbol.lower), value=json.dumps(kline), types="SET")
+        klines = get_history_k(typ='futures', coin=self.symbol, T=timestamp, limit=limit).json()
+        self._privateRedisMethod(key="_futures_{}_kline_".format(self.symbol.lower), value=json.dumps(klines), types="SET")
         price_clone = list(map(lambda x: float(x[4]), klines))
         self._privateRedisMethod(key="_futures_{}_kline_price_clone_".format(self.symbol.lower), value=json.dumps(price_clone), types="SET")
         price_array = np.asarray(price_clone)
