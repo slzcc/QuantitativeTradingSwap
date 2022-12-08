@@ -17,6 +17,7 @@ import logging
 import os
 import numpy as np
 import websocket
+import talib
 
 from utils.binance import tradeAPI
 from utils.binance.getKlineData import *
