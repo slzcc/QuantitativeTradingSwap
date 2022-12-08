@@ -164,7 +164,7 @@ class GridStrategy(Process):
 
     def getBinanceSymbolHistoryKline(self, timestamp='1h', limit=500):
         kline = get_history_k(typ='futures', coin=self.symbol, T=timestamp, limit=limit).json()
-        self._privateRedisMethod("_futures_{}_kline_".format(key=self.symbol.lower), value=json.dumps(_message["k"]["c"]), types="SET")
+        self._privateRedisMethod("_futures_{}_kline_".format(key=self.symbol.lower), value=json.dumps(kline), types="SET")
         price_clone = list(map(lambda x: float(x[4]), klines))
         self._privateRedisMethod("_futures_{}_kline_price_clone_".format(key=self.symbol.lower), value=json.dumps(price_clone), types="SET")
         price_array = np.asarray(price_clone)
