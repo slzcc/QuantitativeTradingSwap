@@ -160,21 +160,21 @@ class GridStrategy(Process):
 
     def getBinanceSymbolHistoryKline(self, timestamp='1h', limit=500):
         kline = get_history_k(typ='futures', coin=self.symbol, T=timestamp, limit=limit).json()
-        self._privateRedisMethod("_futures_{}_kline_".format(key=self.symbol.lower), value=json.dumps(kline), types="SET")
+        self._privateRedisMethod(key="_futures_{}_kline_".format(self.symbol.lower), value=json.dumps(kline), types="SET")
         price_clone = list(map(lambda x: float(x[4]), klines))
-        self._privateRedisMethod("_futures_{}_kline_price_clone_".format(key=self.symbol.lower), value=json.dumps(price_clone), types="SET")
+        self._privateRedisMethod(key="_futures_{}_kline_price_clone_".format(self.symbol.lower), value=json.dumps(price_clone), types="SET")
         price_array = np.asarray(price_clone)
-        self._privateRedisMethod("_futures_{}_kline_price_clone_array_".format(key=self.symbol.lower), value=json.dumps(price_array), types="SET")
+        self._privateRedisMethod(key="_futures_{}_kline_price_clone_array_".format(self.symbol.lower), value=json.dumps(price_array), types="SET")
 
         EMA5 = talib.EMA(price_array, 5)
-        self._privateRedisMethod("_futures_{}_kline_EMA5_".format(key=self.symbol.lower), value=json.dumps(EMA5), types="SET")
+        self._privateRedisMethod(key="_futures_{}_kline_EMA5_".format(self.symbol.lower), value=json.dumps(EMA5), types="SET")
         EMA10 = talib.EMA(price_array, 10)
-        self._privateRedisMethod("_futures_{}_kline_EMA10_".format(key=self.symbol.lower), value=json.dumps(EMA10), types="SET")
+        self._privateRedisMethod(key="_futures_{}_kline_EMA10_".format(self.symbol.lower), value=json.dumps(EMA10), types="SET")
 
         MA5 = talib.MA(price_array, 5)
-        self._privateRedisMethod("_futures_{}_kline_MA5_".format(key=self.symbol.lower), value=json.dumps(MA5), types="SET")
+        self._privateRedisMethod(key="_futures_{}_kline_MA5_".format(self.symbol.lower), value=json.dumps(MA5), types="SET")
         MA10 = talib.MA(price_array, 10)
-        self._privateRedisMethod("_futures_{}_kline_MA5_".format(key=self.symbol.lower), value=json.dumps(MA10), types="SET")
+        self._privateRedisMethod(key="_futures_{}_kline_MA5_".format(self.symbol.lower), value=json.dumps(MA10), types="SET")
         time.sleep(10)
 
     def run(self):
