@@ -167,14 +167,14 @@ class GridStrategy(Process):
         price_array = np.asarray(price_clone)
 
         EMA5 = talib.EMA(price_array, 5)
-        self._privateRedisMethod(key="_futures_{}_kline_EMA5_".format(self.symbol.lower()), value=json.dumps(EMA5), types="SET")
+        self._privateRedisMethod(key="_futures_{}_kline_EMA5_".format(self.symbol.lower()), value=json.dumps(EMA5.tolist()), types="SET")
         EMA10 = talib.EMA(price_array, 10)
-        self._privateRedisMethod(key="_futures_{}_kline_EMA10_".format(self.symbol.lower()), value=json.dumps(EMA10), types="SET")
+        self._privateRedisMethod(key="_futures_{}_kline_EMA10_".format(self.symbol.lower()), value=json.dumps(EMA10.tolist()), types="SET")
 
         MA5 = talib.MA(price_array, 5)
-        self._privateRedisMethod(key="_futures_{}_kline_MA5_".format(self.symbol.lower()), value=json.dumps(MA5), types="SET")
+        self._privateRedisMethod(key="_futures_{}_kline_MA5_".format(self.symbol.lower()), value=json.dumps(MA5.tolist()), types="SET")
         MA10 = talib.MA(price_array, 10)
-        self._privateRedisMethod(key="_futures_{}_kline_MA5_".format(self.symbol.lower()), value=json.dumps(MA10), types="SET")
+        self._privateRedisMethod(key="_futures_{}_kline_MA5_".format(self.symbol.lower()), value=json.dumps(MA10.tolist()), types="SET")
         time.sleep(10)
 
     def run(self):
