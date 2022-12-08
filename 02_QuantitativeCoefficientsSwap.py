@@ -137,7 +137,7 @@ class GridStrategy(Process):
         self.price_precision = arg_data['price_precision']
         self.min_qty = arg_data['min_qty']
         self.profit = arg_data['profit']
-        self.min_profit = arg_data['min_profit'] / 100
+        self.min_profit = arg_data['min_profit']
         self.ratio = arg_data['ratio']
 
     def on_open_binance_btcusdt_kline(self, ws):
@@ -274,8 +274,9 @@ class GridStrategy(Process):
                 self.redisClient.setKey("{}_spot_eth@btc_last_trade_price_{}".format(self.token, self.direction),
                                         self.redisClient.getKey("{}_spot_eth@btc_present_price_{}".format(self.token, self.direction)))
                 ## 记录下单池
-                self.redisClient.setKey("{}_spot_eth@btc_order_pool_{}".format(self.token, self.direction),
-                                        self.redisClient.getKey("{}_spot_eth@btc_present_price_{}".format(self.token, self.direction)))
+                eth_btc_order_pool = json.loads(self.redisClient.getKey("{}_spot_eth@btc_order_pool_{}".format(self.token, self.direction)))
+                eth_btc_order_pool.append(self.redisClient.getKey("{}_spot_eth@btc_present_price_{}".format(self.token, self.direction)))
+                self.redisClient.setKey("{}_spot_eth@btc_order_pool_{}".format(self.token, self.direction), json.dumps(eth_btc_order_pool))
             else:
                 # 计算盈亏百分比
                 ## BTC 当前价格

@@ -5,3 +5,4 @@ pandas
 redis
 PyDecimal
 websocket-client
+numpy
