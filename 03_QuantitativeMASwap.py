@@ -205,7 +205,7 @@ class GridStrategy(Process):
             
 if __name__ == '__main__':
     args = command_line_args(sys.argv[1:])
-    conn_setting = {'key': args.key, 'secret': args.secret, 'token': args.token}
+    conn_setting = {'key': args.key, 'secret': args.secret, 'token': args.token, 'symbol': args.symbol}
     
     gs = GridStrategy(**conn_setting)
     gs.run()
