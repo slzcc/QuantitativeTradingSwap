@@ -60,12 +60,12 @@ class GridStrategy(Process):
         # 初始化 Redis 默认数据
         # timestamp default
         # 记录当前运行时间
-        if not self.redisClient.getKey("{}_t_start_{}".format(self.token, self.direction)):
-            self.redisClient.setKey("{}_t_start_{}".format(self.token, self.direction), time.time())
+        if not self.redisClient.getKey("{}_futures_t_start_{}".format(self.token, self.direction)):
+            self.redisClient.setKey("{}_futures_t_start_{}".format(self.token, self.direction), time.time())
         # _last_order_time_ default
         # 记录上一次下单时间
-        if not self.redisClient.getKey("{}_last_order_time_{}".format(self.token, self.direction)):
-            self.redisClient.setKey("{}_last_order_time_{}".format(self.token, self.direction), 0)
+        if not self.redisClient.getKey("{}_futures_last_order_time_{}".format(self.token, self.direction)):
+            self.redisClient.setKey("{}_futures_last_order_time_{}".format(self.token, self.direction), 0)
 
         # 如果日志目录不存在进行创建
         if not os.path.exists('logs'):
@@ -146,7 +146,7 @@ class GridStrategy(Process):
             logger.error("异常错误: {}".format(err))
         if "e" in _message.keys():
             # 价格设置
-            self._privateRedisMethod("_futures_{}_present_price_".format(key=self.symbol.lower()), value=_message["k"]["c"], types="SET")
+            self._privateRedisMethod(key="_futures_{}_present_price_".format(self.symbol.lower()), value=_message["k"]["c"], types="SET")
 
     def on_close(self):
         print("closed connection")
@@ -174,7 +174,7 @@ class GridStrategy(Process):
         MA5 = talib.MA(price_array, 5)
         self._privateRedisMethod(key="_futures_{}_kline_MA5_".format(self.symbol.lower()), value=json.dumps(MA5.tolist()), types="SET")
         MA10 = talib.MA(price_array, 10)
-        self._privateRedisMethod(key="_futures_{}_kline_MA5_".format(self.symbol.lower()), value=json.dumps(MA10.tolist()), types="SET")
+        self._privateRedisMethod(key="_futures_{}_kline_MA10_".format(self.symbol.lower()), value=json.dumps(MA10.tolist()), types="SET")
         time.sleep(10)
 
     def run(self):
