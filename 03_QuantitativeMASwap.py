@@ -162,8 +162,8 @@ class GridStrategy(Process):
             except Exception as err:
                 logger.error("异常错误: {}".format(err))
 
-    def getBinanceSymbolHistoryKline(self, symbol=self.symbol, timestamp='1h', limit=500):
-        kline = get_history_k(typ='futures', coin=symbol, T=timestamp, limit=limit).json()
+    def getBinanceSymbolHistoryKline(self, timestamp='1h', limit=500):
+        kline = get_history_k(typ='futures', coin=self.symbol, T=timestamp, limit=limit).json()
         self._privateRedisMethod("_futures_{}_kline_".format(key=self.symbol.lower), value=json.dumps(_message["k"]["c"]), types="SET")
         price_clone = list(map(lambda x: float(x[4]), klines))
         self._privateRedisMethod("_futures_{}_kline_price_clone_".format(key=self.symbol.lower), value=json.dumps(price_clone), types="SET")
