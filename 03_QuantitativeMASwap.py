@@ -27,42 +27,18 @@ from utils.method import redisMethod
 from utils.method import toolsMethod
 from utils.method.toolsMethod import globalSetOrderIDStatus
 
-from utils.QuantitativeCoefficientSwapUtils import command_line_args
+from utils.QuantitativeTradingSwapUtils import command_line_args
 from logging.handlers import TimedRotatingFileHandler
 from multiprocessing import Process
 from decimal import Decimal
 import numpy as np
-
-# 创建日志器对象
-######################################## Logging __name__ #######################################
-logger = logging.getLogger('ETHBTC')
-
-# 设置logger可输出日志级别范围
-logger.setLevel(logging.DEBUG)
-
-# 添加控制台handler，用于输出日志到控制台
-console_handler = logging.StreamHandler()
-# 日志输出到系统
-# console_handler = logging.StreamHandler(stream=None）
-# 添加日志文件handler，用于输出日志到文件中
-#file_handler = logging.FileHandler(filename='logs/{}.log'.format(self.name), encoding='UTF-8', when='H', interval=6, backupCount=4)
-file_handler = TimedRotatingFileHandler(filename='logs/{}.log'.format('ETHBTC'), encoding='UTF-8', when='H', interval=6, backupCount=4)
-
-# 将handler添加到日志器中
-#logger.addHandler(console_handler)
-logger.addHandler(file_handler)
-
-# 设置格式并赋予handler
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-console_handler.setFormatter(formatter)
-file_handler.setFormatter(formatter)
 
 redisClient = redisMethod.redisUtils()
 
 # websocket.enableTrace(True)
 
 class GridStrategy(Process):
-    def __init__(self, key, secret, token):
+    def __init__(self, symbol, key, secret, token):
         """
         :param symbol: BTCUSDT多
         :param key   : AccessKey
@@ -75,10 +51,10 @@ class GridStrategy(Process):
         self.token = token              # redis key 前缀
         self.key = key                  # 用户凭证
         self.secret = secret            # 用户凭证
-        self.name = 'ETHBTC'            # 开单名称
-        self.symbol =  'ETHBTC'
+        self.name = '{}_MA'.format(symbol)              # 开单名称
+        self.symbol =  symbol
         self.direction = 'coefficient'
-        self.read_conf(self.symbol)
+        # self.read_conf(self.symbol)
 
         # 初始化 Redis 默认数据
         # timestamp default
@@ -93,6 +69,26 @@ class GridStrategy(Process):
         # 如果日志目录不存在进行创建
         if not os.path.exists('logs'):
             os.mkdir('logs')
+
+        # 创建日志器对象
+        ######################################## Logging __name__ #######################################
+        logger = logging.getLogger(self.name)
+
+        # 设置logger可输出日志级别范围
+        logger.setLevel(logging.DEBUG)
+
+        # 添加控制台handler，用于输出日志到控制台
+        console_handler = logging.StreamHandler()
+        # 添加日志文件handler，用于输出日志到文件中
+        file_handler = TimedRotatingFileHandler(filename='logs/{}.log'.format(self.name), encoding='UTF-8', when='H', interval=6, backupCount=4)
+
+        # 将handler添加到日志器中
+        logger.addHandler(file_handler)
+
+        # 设置格式并赋予handler
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        console_handler.setFormatter(formatter)
+        file_handler.setFormatter(formatter)
 
     def read_conf(self, symbol):
         """
