@@ -164,7 +164,6 @@ class GridStrategy(Process):
         price_clone = list(map(lambda x: float(x[4]), klines))
         self._privateRedisMethod(key="_futures_{}_kline_price_clone_".format(self.symbol.lower), value=json.dumps(price_clone), types="SET")
         price_array = np.asarray(price_clone)
-        self._privateRedisMethod(key="_futures_{}_kline_price_clone_array_".format(self.symbol.lower), value=json.dumps(price_array), types="SET")
 
         EMA5 = talib.EMA(price_array, 5)
         self._privateRedisMethod(key="_futures_{}_kline_EMA5_".format(self.symbol.lower), value=json.dumps(EMA5), types="SET")
