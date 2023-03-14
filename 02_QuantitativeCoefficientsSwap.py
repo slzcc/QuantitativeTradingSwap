@@ -355,9 +355,9 @@ class GridStrategy(Process):
                 if self.redisClient.getKey("{}_forced_liquidation_{}".format(self.token, self.direction)) == 'true':
                     logger.info('{} 强制平仓'.format('BTCUSDT'))
                     ## BTC/USDT 清仓
-                    BtcUsdtForcedLiquidation()
+                    self.BtcUsdtForcedLiquidation()
                     ## ETH/USDT 清仓
-                    EthUsdtForcedLiquidation()
+                    self.EthUsdtForcedLiquidation()
                     self.redisClient.setKey("{}_forced_liquidation_{}".format(self.token, self.direction), 'false')
                     time.sleep(5)
                     continue
@@ -374,7 +374,7 @@ class GridStrategy(Process):
                         continue
                     else:
                         ## 获取 BTC 方向
-                        BUY_SELL, LONG_SHORT = LongShortDirection('BTCUSDT')
+                        BUY_SELL, LONG_SHORT = self.LongShortDirection('BTCUSDT')
                         ## BTC/USDT 开单(最小下单量 0.001)
                         logger.info('{} 准备建仓'.format('BTCUSDT'))
                         resOrder = trade.open_order('BTCUSDT', BUY_SELL, self.min_qty, price=None, positionSide=LONG_SHORT).json()
@@ -400,7 +400,7 @@ class GridStrategy(Process):
                         ethUsdtOrderQuantity = float('%.3f' % _ethUsdtOrderQuantity)
 
                         ## 获取 ETH 方向
-                        BUY_SELL, LONG_SHORT = LongShortDirection('ETHUSDT')
+                        BUY_SELL, LONG_SHORT = self.LongShortDirection('ETHUSDT')
 
                         logger.info('{} 准备建仓'.format('ETHUSDT'))
                         resOrder = trade.open_order('ETHUSDT', BUY_SELL, ethUsdtOrderQuantity, price=None, positionSide=LONG_SHORT).json()
@@ -455,9 +455,9 @@ class GridStrategy(Process):
                                                                                                     eth_usdt_profi_loss,
                                                                                                     btc_usdt_profi_loss + eth_usdt_profi_loss))
                         ## BTC/USDT 清仓
-                        BtcUsdtForcedLiquidation()
+                        self.BtcUsdtForcedLiquidation()
                         ## ETH/USDT 清仓
-                        EthUsdtForcedLiquidation()
+                        self.EthUsdtForcedLiquidation()
                     else:
                         logger.info('持续监听, 当前 BTCUSDT 盈损比例 {}, ETHUSDT 盈损比例 {}, 合计 {}'.format(btc_usdt_profi_loss, eth_usdt_profi_loss, btc_usdt_profi_loss + eth_usdt_profi_loss))
             except Exception as err:
