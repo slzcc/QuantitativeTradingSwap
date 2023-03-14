@@ -298,29 +298,23 @@ class GridStrategy(Process):
     def LongShortDirection(self, symbol):
         if symbol == "BTCUSDT":
             if int(self.redisClient.getKey("{}_long_short_direction_{}".format(self.token, self.direction))) == 1:
-                BUY_SELL = 'BUY'
-                LONG_SHORT = 'LONG'
+                BUY_SELL, LONG_SHORT = 'BUY', 'LONG'
                 return BUY_SELL, LONG_SHORT
             elif int(self.redisClient.getKey("{}_long_short_direction_{}".format(self.token, self.direction))) == 0:
-                BUY_SELL = 'SELL'
-                LONG_SHORT = 'SHORT'
+                BUY_SELL, LONG_SHORT = 'SELL', 'SHORT'
                 return BUY_SELL, LONG_SHORT
             else:
-                BUY_SELL = 'BUY'
-                LONG_SHORT = 'LONG'
+                BUY_SELL, LONG_SHORT = 'BUY', 'LONG'
                 return BUY_SELL, LONG_SHORT
         elif symbol == "ETHUSDT":
             if int(self.redisClient.getKey("{}_long_short_direction_{}".format(self.token, self.direction))) == 1:
-                BUY_SELL = 'SELL'
-                LONG_SHORT = 'SHORT'
+                BUY_SELL, LONG_SHORT = 'SELL', 'SHORT'
                 return BUY_SELL, LONG_SHORT
             elif int(self.redisClient.getKey("{}_long_short_direction_{}".format(self.token, self.direction))) == 0:
-                BUY_SELL = 'BUY'
-                LONG_SHORT = 'LONG'
+                BUY_SELL, LONG_SHORT = 'BUY', 'LONG'
                 return BUY_SELL, LONG_SHORT
             else:
-                BUY_SELL = 'SELL'
-                LONG_SHORT = 'SHORT'
+                BUY_SELL, LONG_SHORT = 'SELL', 'SHORT'
                 return BUY_SELL, LONG_SHORT
 
     def run(self):
@@ -487,7 +481,7 @@ class GridStrategy(Process):
                     else:
                         logger.info('持续监听, 当前 BTCUSDT 盈损比例 {}, ETHUSDT 盈损比例 {}, 合计 {}'.format(btc_usdt_profi_loss, eth_usdt_profi_loss, btc_usdt_profi_loss + eth_usdt_profi_loss))
             except Exception as err:
-                logger.error('{} 主逻辑异常错误: {}'.format('ETHUSDT', err))
+                logger.error('{} 主逻辑异常错误: {}'.format('ETHBTC', err))
 
 if __name__ == '__main__':
     args = command_line_args(sys.argv[1:])
