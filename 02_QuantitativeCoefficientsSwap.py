@@ -271,7 +271,7 @@ class GridStrategy(Process):
     def LongShortTrend(self):
         # 当 ETH/BTC 的值低于 0.07(default) 时配置
         # 则表明, ETH 弱势需开多, BTC 强势需开空, 反之
-        if float(self.redisClient.getKey("{}_spot_eth@btc_present_price_{}".format(self.token, self.direction))) > format(self.redisClient.getKey("{}_long_short_trend_{}".format(self.token, self.direction))):
+        if float(self.redisClient.getKey("{}_spot_eth@btc_present_price_{}".format(self.token, self.direction))) > float(self.redisClient.getKey("{}_long_short_trend_{}".format(self.token, self.direction))):
             self.redisClient.setKey("{}_long_short_direction_{}".format(self.token, self.direction), '1')
         else:
             self.redisClient.setKey("{}_long_short_direction_{}".format(self.token, self.direction), '0')
