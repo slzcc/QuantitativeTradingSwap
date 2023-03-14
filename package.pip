@@ -6,3 +6,5 @@ redis
 PyDecimal
 websocket-client
 numpy
+statsmodels
+pandas_ta

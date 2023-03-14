@@ -46,4 +46,5 @@ else:
 
 # Requests Proxy
 # 全局 HTTP 代理配置
+# PROXIES_DEFAULT_DATA = {}
 PROXIES_DEFAULT_DATA = {}

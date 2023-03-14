@@ -18,6 +18,7 @@ import os
 import numpy as np
 import websocket
 import talib
+import numpy as np
 
 from utils.binance import tradeAPI
 from utils.binance.getKlineData import *
@@ -27,15 +28,12 @@ from utils import public as PublicModels
 from utils.method import redisMethod
 from utils.method import toolsMethod
 from utils.method.toolsMethod import globalSetOrderIDStatus
-
-from utils.QuantitativeTradingSwapUtils import command_line_args
+from utils.QuantitativeIndicatorsTradingSwapUtils import command_line_args, ConversionDataType
 from logging.handlers import TimedRotatingFileHandler
 from multiprocessing import Process
 from decimal import Decimal
-import numpy as np
 
 redisClient = redisMethod.redisUtils()
-
 # websocket.enableTrace(True)
 
 class GridStrategy(Process):
@@ -53,19 +51,19 @@ class GridStrategy(Process):
         self.key = key                  # 用户凭证
         self.secret = secret            # 用户凭证
         self.name = '{}_MA'.format(symbol)              # 开单名称
-        self.symbol =  symbol
-        self.direction = 'coefficient'
+        self.symbol = symbol
+        # self.direction = 'coefficient'
         # self.read_conf(self.symbol)
 
         # 初始化 Redis 默认数据
         # timestamp default
         # 记录当前运行时间
-        if not self.redisClient.getKey("{}_futures_t_start_{}".format(self.token, self.direction)):
-            self.redisClient.setKey("{}_futures_t_start_{}".format(self.token, self.direction), time.time())
+        if not self.redisClient.getKey("{}_futures_t_start".format(self.token)):
+            self.redisClient.setKey("{}_futures_t_start".format(self.token), time.time())
         # _last_order_time_ default
         # 记录上一次下单时间
-        if not self.redisClient.getKey("{}_futures_last_order_time_{}".format(self.token, self.direction)):
-            self.redisClient.setKey("{}_futures_last_order_time_{}".format(self.token, self.direction), 0)
+        if not self.redisClient.getKey("{}_futures_last_order_time".format(self.token)):
+            self.redisClient.setKey("{}_futures_last_order_time".format(self.token), 0)
 
         # 如果日志目录不存在进行创建
         if not os.path.exists('logs'):
@@ -102,37 +100,14 @@ class GridStrategy(Process):
         self.min_profit = arg_data['min_profit']
         self.ratio = arg_data['ratio']
 
-    def _privateConversionDataType(self, value, dataType='string'):
-        """
-        转换数据类型
-        :param value:    数据
-        :param dataType: 转换的数据类型
-        """
-        res = value
-        try:
-            if dataType == "int":
-                res = int(value)
-            elif dataType == "float":
-                res = float(value)
-            elif dataType == "json_loads":
-                res = json.loads(value)
-            elif dataType == "json_dumps":
-                res = json.dumps(value)
-            elif dataType == "array":
-                if type(value) == list:
-                    res = np.asarray(value)
-        except Exception as err:
-            logger.error("调用 _privateConversionDataType 时异常错误, Value: {}, DataType: {}".format(value, dataType))
-        return res
-
     def _privateRedisMethod(self, key, types="GET", value=None, datatype='string'):
         res = ""
         if types == "SET":
-            res = self.redisClient.setKey("{}{}{}".format(self.token, key, self.direction), value)
+            res = self.redisClient.setKey("{}{}".format(self.token, key), value)
         elif types == "GET":
-            res = self.redisClient.getKey("{}{}{}".format(self.token, key, self.direction))
-            if not dataType == "string":
-                res = self._privateConversionDataType(res, datatype)
+            res = self.redisClient.getKey("{}{}".format(self.token, key))
+            if not datatype == "string":
+                res = ConversionDataType(res, datatype)
         return res
 
     def on_open_binance_symbol_kline(self, ws):
@@ -146,7 +121,7 @@ class GridStrategy(Process):
             logger.error("异常错误: {}".format(err))
         if "e" in _message.keys():
             # 价格设置
-            self._privateRedisMethod(key="_futures_{}_present_price_".format(self.symbol.lower()), value=_message["k"]["c"], types="SET")
+            self._privateRedisMethod(key="_futures_{}_present_price_".format(self.symbol.lower()), value=message, types="SET")
 
     def on_close(self):
         print("closed connection")
@@ -163,25 +138,21 @@ class GridStrategy(Process):
         while True:
             try:
                 klines = get_history_k(typ='futures', coin=self.symbol, T=timestamp, limit=limit).json()
-                self._privateRedisMethod(key="_futures_{}_kline_".format(self.symbol.lower()), value=json.dumps(klines), types="SET")
-                price_clone = list(map(lambda x: float(x[4]), klines))
-                self._privateRedisMethod(key="_futures_{}_kline_price_clone_".format(self.symbol.lower()), value=json.dumps(price_clone), types="SET")
-                price_array = np.asarray(price_clone)
-
-                EMA5 = talib.EMA(price_array, 5)
-                self._privateRedisMethod(key="_futures_{}_kline_EMA5_".format(self.symbol.lower()), value=json.dumps(EMA5.tolist()), types="SET")
-                EMA10 = talib.EMA(price_array, 10)
-                self._privateRedisMethod(key="_futures_{}_kline_EMA10_".format(self.symbol.lower()), value=json.dumps(EMA10.tolist()), types="SET")
-
-                MA5 = talib.MA(price_array, 5)
-                self._privateRedisMethod(key="_futures_{}_kline_MA5_".format(self.symbol.lower()), value=json.dumps(MA5.tolist()), types="SET")
-                MA10 = talib.MA(price_array, 10)
-                self._privateRedisMethod(key="_futures_{}_kline_MA10_".format(self.symbol.lower()), value=json.dumps(MA10.tolist()), types="SET")
+                self._privateRedisMethod(key="_futures_{}_kline".format(self.symbol.lower()), value=json.dumps(klines), types="SET")
 
             except Exception as err:
                 logger.error("异常错误: {}".format(err))
             time.sleep(10)
-        
+
+
+    # def _PrivateDataFrame(self):
+
+    #     data = pd.DataFrame()
+    #     data["EMA5"] = pd.DataFrame(EMA5)
+    #     data["EMA10"] = pd.DataFrame(EMA10)
+    #     data["MA5"] = pd.DataFrame(MA5)
+    #     data["MA10"] = pd.DataFrame(MA10)
+    #     data["Default"] = pd.DataFrame(a)
 
     def run(self):
         # # 获取一个 Binance API 对象
