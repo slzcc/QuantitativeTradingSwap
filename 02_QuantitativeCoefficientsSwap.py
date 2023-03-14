@@ -138,6 +138,12 @@ class GridStrategy(Process):
         if not self.redisClient.getKey("{}_btc_order_direction_{}".format(self.token, self.direction)):
             self.redisClient.setKey("{}_btc_order_direction_{}".format(self.token, self.direction), 'BUY|LONG')
 
+        # 手动模式
+        # 默认 false， 当等于 true 时, 则不会自动平单
+        # 如果手动进行凭单请清空 redis 数据重启服务! 切记
+        if not self.redisClient.getKey("{}_manual_mode_{}".format(self.token, self.direction)):
+            self.redisClient.setKey("{}_manual_mode_{}".format(self.token, self.direction), 'false')
+
         # 多空方向, 由 _long_short_trend_ key 判定得出, 默认为 1, 即: ETH 开空, BTC 开多
         # 值 0/1
         # 1(default): ETH 开空, BTC 开多
@@ -350,6 +356,10 @@ class GridStrategy(Process):
         while True:
             try:
                 time.sleep(0.3)
+                # 手动模式
+                if self.redisClient.getKey("{}_manual_mode_{}".format(self.token, self.direction)) == 'true':
+                    time.sleep(5)
+                    continue
 
                 # 强制平仓
                 if self.redisClient.getKey("{}_forced_liquidation_{}".format(self.token, self.direction)) == 'true':
