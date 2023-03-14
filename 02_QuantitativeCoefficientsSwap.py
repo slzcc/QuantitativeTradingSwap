@@ -298,24 +298,18 @@ class GridStrategy(Process):
     def LongShortDirection(self, symbol):
         if symbol == "BTCUSDT":
             if int(self.redisClient.getKey("{}_long_short_direction_{}".format(self.token, self.direction))) == 1:
-                BUY_SELL, LONG_SHORT = 'BUY', 'LONG'
-                return BUY_SELL, LONG_SHORT
+                return 'BUY', 'LONG'
             elif int(self.redisClient.getKey("{}_long_short_direction_{}".format(self.token, self.direction))) == 0:
-                BUY_SELL, LONG_SHORT = 'SELL', 'SHORT'
-                return BUY_SELL, LONG_SHORT
+                return 'SELL', 'SHORT'
             else:
-                BUY_SELL, LONG_SHORT = 'BUY', 'LONG'
-                return BUY_SELL, LONG_SHORT
+                return 'BUY', 'LONG'
         elif symbol == "ETHUSDT":
             if int(self.redisClient.getKey("{}_long_short_direction_{}".format(self.token, self.direction))) == 1:
-                BUY_SELL, LONG_SHORT = 'SELL', 'SHORT'
-                return BUY_SELL, LONG_SHORT
+                return 'SELL', 'SHORT'
             elif int(self.redisClient.getKey("{}_long_short_direction_{}".format(self.token, self.direction))) == 0:
-                BUY_SELL, LONG_SHORT = 'BUY', 'LONG'
-                return BUY_SELL, LONG_SHORT
+                return 'BUY', 'LONG'
             else:
-                BUY_SELL, LONG_SHORT = 'SELL', 'SHORT'
-                return BUY_SELL, LONG_SHORT
+                return 'SELL', 'SHORT'
 
     def run(self):
         # 获取一个 Binance API 对象
