@@ -358,6 +358,7 @@ class GridStrategy(Process):
                 time.sleep(0.3)
                 # 手动模式
                 if self.redisClient.getKey("{}_manual_mode_{}".format(self.token, self.direction)) == 'true':
+                    logger.info('{} 开启手动模式'.format('ETHBTC'))
                     time.sleep(5)
                     continue
 
