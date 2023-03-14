@@ -243,7 +243,6 @@ class GridStrategy(Process):
         resOrder = trade.open_order('BTCUSDT', BUY_SELL, float(sum([Decimal(item) for item in json.loads(self.redisClient.getKey("{}_futures_btc@usdt_order_pool_{}".format(self.token, self.direction)))])), price=None, positionSide=LONG_SHORT).json()
         if not 'orderId' in resOrder.keys():
             logger.info('%s 清仓失败 \t %s \t %s' % ('BTCUSDT', str(resOrder), PublicModels.changeTime(time.time())))
-            continue
         else:
             logger.info('{} 清仓成功'.format('BTCUSDT'))
             # 清除下单价格
@@ -261,7 +260,6 @@ class GridStrategy(Process):
         resOrder = trade.open_order('ETHUSDT', BUY_SELL, float(sum([Decimal(item) for item in json.loads(self.redisClient.getKey("{}_futures_eth@usdt_order_pool_{}".format(self.token, self.direction)))])), price=None, positionSide=LONG_SHORT).json()
         if not 'orderId' in resOrder.keys():
             logger.info('%s 清仓失败 \t %s \t %s' % ('ETHUSDT', str(resOrder), PublicModels.changeTime(time.time())))
-            continue
         else:
             logger.info('{} 清仓成功'.format('ETHUSDT'))
             # 清除下单价格
