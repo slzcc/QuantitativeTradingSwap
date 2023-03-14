@@ -369,7 +369,7 @@ class GridStrategy(Process):
                 if len(btc_usdt_order_pool) == 0 and len(eth_usdt_order_pool) == 0:
                     # 停止下单
                     if self.redisClient.getKey("{}_order_pause_{}".format(self.token, self.direction)) == 'true':
-                        logger.info('{} 停止下单状态'.format('BTCUSDT'))
+                        logger.info('{} 停止下单状态'.format('BTCUSDT and ETHUSDT'))
                         time.sleep(5)
                         continue
                     else:
@@ -445,11 +445,20 @@ class GridStrategy(Process):
                     ## ETH 最后下单价格
                     eth_usdt_last_trade_price = float(self.redisClient.getKey(
                         "{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction)))
+
+                    ## 获取 ETH 方向
+                    ETH_BUY_SELL, ETH_LONG_SHORT = self.LongShortDirection('ETHUSDT')
+                    ## 获取 BTC 方向
+                    BTC_BUY_SELL, BTC_LONG_SHORT = self.LongShortDirection('BTCUSDT')
+
                     # 判定如果大于 profit 则进行清仓
                     ## BTCUSDT 盈亏百分比
                     btc_usdt_profi_loss = (btc_usdt_present_price - btc_usdt_last_trade_price) / btc_usdt_present_price * self.ratio * 100
                     ## ETHUSDT 盈亏百分比
                     eth_usdt_profi_loss = (eth_usdt_last_trade_price - eth_usdt_present_price) / eth_usdt_present_price * self.ratio * 100
+
+                    logger.info('当前 BTCUSDT 方向: {}/{}, ETHUSDT 方向: {}/{}'.format(BTC_BUY_SELL, BTC_LONG_SHORT, ETH_BUY_SELL, ETH_LONG_SHORT))
+
                     if (btc_usdt_profi_loss + eth_usdt_profi_loss) >= self.profit:
                         logger.info('准备清仓, 当前 BTCUSDT 盈损比例 {}, ETHUSDT 盈损比例 {}, 合计 {}'.format(btc_usdt_profi_loss,
                                                                                                     eth_usdt_profi_loss,
