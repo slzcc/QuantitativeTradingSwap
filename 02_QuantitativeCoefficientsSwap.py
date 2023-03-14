@@ -463,10 +463,16 @@ class GridStrategy(Process):
                     BTC_BUY_SELL, BTC_LONG_SHORT = self.LongShortDirection('BTCUSDT')
 
                     # 判定如果大于 profit 则进行清仓
-                    ## BTCUSDT 盈亏百分比
-                    btc_usdt_profi_loss = (btc_usdt_present_price - btc_usdt_last_trade_price) / btc_usdt_present_price * self.ratio * 100
-                    ## ETHUSDT 盈亏百分比
-                    eth_usdt_profi_loss = (eth_usdt_last_trade_price - eth_usdt_present_price) / eth_usdt_present_price * self.ratio * 100
+                    if BTC_LONG_SHORT == 'LONG':
+                        ## BTCUSDT 盈亏百分比
+                        btc_usdt_profi_loss = (btc_usdt_present_price - btc_usdt_last_trade_price) / btc_usdt_present_price * self.ratio * 100
+                        ## ETHUSDT 盈亏百分比
+                        eth_usdt_profi_loss = (eth_usdt_last_trade_price - eth_usdt_present_price) / eth_usdt_present_price * self.ratio * 100
+                    elif ETH_LONG_SHORT == 'LONG':
+                        ## BTCUSDT 盈亏百分比
+                        btc_usdt_profi_loss = (btc_usdt_last_trade_price - btc_usdt_present_price) / btc_usdt_present_price * self.ratio * 100
+                        ## ETHUSDT 盈亏百分比
+                        eth_usdt_profi_loss = (eth_usdt_present_price - eth_usdt_last_trade_price) / eth_usdt_present_price * self.ratio * 100
 
                     logger.info('当前 BTCUSDT 方向: {}/{}, ETHUSDT 方向: {}/{}'.format(BTC_BUY_SELL, BTC_LONG_SHORT, ETH_BUY_SELL, ETH_LONG_SHORT))
 
