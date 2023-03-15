@@ -32,6 +32,14 @@ from logging.handlers import TimedRotatingFileHandler
 from multiprocessing import Process
 from decimal import Decimal
 
+def BeiJingDateTime(sec):
+    """
+    设定北京时区
+    """
+    if time.strftime('%z') == "+0800":
+        return datetime.datetime.now().timetuple()
+    return (datetime.datetime.now() + datetime.timedelta(hours=8)).timetuple()
+
 # 创建日志器对象
 ######################################## Logging __name__ #######################################
 logger = logging.getLogger('ETHBTC')
@@ -53,6 +61,9 @@ logger.addHandler(file_handler)
 
 # 设置格式并赋予handler
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# 设置日志时区
+formatter.converter = BeiJingDateTime
+
 console_handler.setFormatter(formatter)
 file_handler.setFormatter(formatter)
 
@@ -249,15 +260,15 @@ class GridStrategy(Process):
             ## BTC/USDT 清仓
             resOrder = trade.open_order('BTCUSDT', BUY_SELL, float(sum([Decimal(item) for item in json.loads(self.redisClient.getKey("{}_futures_btc@usdt_order_pool_{}".format(self.token, self.direction)))])), price=None, positionSide=LONG_SHORT).json()
             if not 'orderId' in resOrder.keys():
-                logger.info('%s 清仓失败 \t %s \t %s' % ('BTCUSDT', str(resOrder), PublicModels.changeTime(time.time())))
+                logger.error('%s 清仓失败 \t %s \t %s' % ('BTCUSDT', str(resOrder), PublicModels.changeTime(time.time())))
             else:
-                logger.info('{} 清仓成功'.format('BTCUSDT'))
+                logger.info('{} 清仓成功, 卖出数量: {}'.format('BTCUSDT', float(sum([Decimal(item) for item in json.loads(self.redisClient.getKey("{}_futures_btc@usdt_order_pool_{}".format(self.token, self.direction)))]))))
                 # 清除下单价格
                 self.redisClient.setKey("{}_futures_btc@usdt_last_trade_price_{}".format(self.token, self.direction), 0.0)
                 # 清除下单池
                 self.redisClient.setKey("{}_futures_btc@usdt_order_pool_{}".format(self.token, self.direction), '[]')
         except Exception as err:
-            logger.info('{} BTC 清仓异常错误: {}'.format('BTCUSDT', err))
+            logger.error('{} BTC 清仓异常错误: {}'.format('BTCUSDT', err))
 
     # ETH 清仓
     def EthUsdtForcedLiquidation(self, trade):
@@ -269,15 +280,15 @@ class GridStrategy(Process):
             ## ETH/USDT 清仓
             resOrder = trade.open_order('ETHUSDT', BUY_SELL, float(sum([Decimal(item) for item in json.loads(self.redisClient.getKey("{}_futures_eth@usdt_order_pool_{}".format(self.token, self.direction)))])), price=None, positionSide=LONG_SHORT).json()
             if not 'orderId' in resOrder.keys():
-                logger.info('%s 清仓失败 \t %s \t %s' % ('ETHUSDT', str(resOrder), PublicModels.changeTime(time.time())))
+                logger.error('%s 清仓失败 \t %s \t %s' % ('ETHUSDT', str(resOrder), PublicModels.changeTime(time.time())))
             else:
-                logger.info('{} 清仓成功'.format('ETHUSDT'))
+                logger.info('{} 清仓成功, 卖出数量: {}'.format('ETHUSDT', float(sum([Decimal(item) for item in json.loads(self.redisClient.getKey("{}_futures_eth@usdt_order_pool_{}".format(self.token, self.direction)))]))))
                 # 清除下单价格
                 self.redisClient.setKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction), 0.0)
                 # 清除下单池
                 self.redisClient.setKey("{}_futures_eth@usdt_order_pool_{}".format(self.token, self.direction), '[]')
         except Exception as err:
-            logger.info('{} ETH 清仓异常错误: {}'.format('ETHUSDT', err))
+            logger.error('{} ETH 清仓异常错误: {}'.format('ETHUSDT', err))
         
     # 判断趋势
     def LongShortTrend(self):
@@ -344,12 +355,6 @@ class GridStrategy(Process):
         while True:
             try:
                 time.sleep(0.3)
-                # 手动模式
-                if self.redisClient.getKey("{}_manual_mode_{}".format(self.token, self.direction)) == 'true':
-                    logger.info('{} 开启手动模式'.format('ETHBTC'))
-                    time.sleep(5)
-                    continue
-
                 # 强制平仓
                 if self.redisClient.getKey("{}_forced_liquidation_{}".format(self.token, self.direction)) == 'true':
                     logger.info('{} 强制平仓'.format('BTCUSDT'))
@@ -358,6 +363,12 @@ class GridStrategy(Process):
                     ## ETH/USDT 清仓
                     self.EthUsdtForcedLiquidation(trade)
                     self.redisClient.setKey("{}_forced_liquidation_{}".format(self.token, self.direction), 'false')
+                    time.sleep(5)
+                    continue
+
+                # 手动模式
+                if self.redisClient.getKey("{}_manual_mode_{}".format(self.token, self.direction)) == 'true':
+                    logger.info('{} 开启手动模式'.format('ETHBTC'))
                     time.sleep(5)
                     continue
 
@@ -379,12 +390,12 @@ class GridStrategy(Process):
                         resOrder = trade.open_order('BTCUSDT', BUY_SELL, self.min_qty, price=None, positionSide=LONG_SHORT).json()
                         if not 'orderId' in resOrder.keys():
                             if resOrder['msg'] == 'Margin is insufficient.':
-                                logger.info('%s 建仓失败, 可用金不足 \t %s \t %s' % ('BTCUSDT', str(resOrder), PublicModels.changeTime(time.time())))
+                                logger.error('%s 建仓失败, 可用金不足 \t %s \t %s' % ('BTCUSDT', str(resOrder), PublicModels.changeTime(time.time())))
                             else:
-                                logger.info('%s 建仓失败 \t %s \t %s' % ('BTCUSDT', str(resOrder), PublicModels.changeTime(time.time())))
+                                logger.error('%s 建仓失败 \t %s \t %s' % ('BTCUSDT', str(resOrder), PublicModels.changeTime(time.time())))
                             continue
                         else:
-                            logger.info('{} 建仓成功'.format('BTCUSDT'))
+                            logger.info('{} 建仓成功, 购买数量: {}'.format('BTCUSDT', self.min_qty))
                             # 记录下单价格
                             self.redisClient.setKey("{}_futures_btc@usdt_last_trade_price_{}".format(self.token, self.direction), self.redisClient.getKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction)))
                             # 记录下单池
@@ -405,12 +416,12 @@ class GridStrategy(Process):
                         resOrder = trade.open_order('ETHUSDT', BUY_SELL, ethUsdtOrderQuantity, price=None, positionSide=LONG_SHORT).json()
                         if not 'orderId' in resOrder.keys():
                             if resOrder['msg'] == 'Margin is insufficient.':
-                                logger.info('%s 建仓失败, 可用金不足 \t %s \t %s' % ('ETHUSDT', str(resOrder), PublicModels.changeTime(time.time())))
+                                logger.error('%s 建仓失败, 可用金不足 \t %s \t %s' % ('ETHUSDT', str(resOrder), PublicModels.changeTime(time.time())))
                             else:
-                                logger.info('%s 建仓失败 \t %s \t %s' % ('ETHUSDT', str(resOrder), PublicModels.changeTime(time.time())))
+                                logger.error('%s 建仓失败 \t %s \t %s' % ('ETHUSDT', str(resOrder), PublicModels.changeTime(time.time())))
                             continue
                         else:
-                            logger.info('{} 建仓成功'.format('ETHUSDT'))
+                            logger.info('{} 建仓成功, 购买数量: {}'.format('ETHUSDT', ethUsdtOrderQuantity))
                             # 记录下单价格
                             self.redisClient.setKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction), self.redisClient.getKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction)))
                             # 记录下单池
