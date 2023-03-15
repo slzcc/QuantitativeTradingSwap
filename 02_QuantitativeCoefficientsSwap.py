@@ -291,12 +291,14 @@ class GridStrategy(Process):
 
         # 判断是否成功获取订单信息
         if not "updateTime" in orderInfo.keys():
-            return False
+            logger.warning("无法正常获取订单 updateTime, 对象数据: ".format(orderInfo))
+            return True
 
         # 判断远程 API 当前 orderID 的状态 FILLED 为已经成功建仓 NEW 为委托单 EXPIRED 过期 CANCELED 取消订单
         if orderInfo["status"] == "NEW":
-            return True
-        return False
+            logger.info("检查订单 {} 状态正常".format(orderId))
+            return False
+        return True
 
     # 计算收益
     def BTC_and_ETH_StatisticalIncome(self):
@@ -360,7 +362,7 @@ class GridStrategy(Process):
                 # 记录订单
                 btc_usdt_sell_order_number_pool = json.loads(self.redisClient.getKey("{}_futures_btc@usdt_sell_order_number_pool_{}".format(self.token, self.direction))).append(resOrder["orderId"])
                 # 检查订单是否完成, 否则阻塞
-                while not self.checkOrder(trade, 'BTCUSDT', resOrder["orderId"]):
+                while self.checkOrder(trade, 'BTCUSDT', resOrder["orderId"]):
                     time.sleep(1)
                     logger.warning('{} 清仓订单状态异常订单号 {} 订单状态 {}'.format('BTCUSDT', resOrder["orderId"], resOrder["status"]))
                 self.redisClient.setKey("{}_futures_btc@usdt_sell_order_number_pool_{}".format(self.token, self.direction), btc_usdt_sell_order_number_pool)
@@ -403,7 +405,7 @@ class GridStrategy(Process):
                 # 记录订单
                 eth_usdt_sell_order_number_pool = json.loads(self.redisClient.getKey("{}_futures_eth@usdt_sell_order_number_pool_{}".format(self.token, self.direction))).append(resOrder["orderId"])
                 # 检查订单是否完成, 否则阻塞
-                while not self.checkOrder(trade, 'ETHUSDT', resOrder["orderId"]):
+                while self.checkOrder(trade, 'ETHUSDT', resOrder["orderId"]):
                     time.sleep(1)
                     logger.warning('{} 清仓订单状态异常订单号 {} 订单状态 {}'.format('ETHUSDT', resOrder["orderId"], resOrder["status"]))
                 self.redisClient.setKey("{}_futures_eth@usdt_sell_order_number_pool_{}".format(self.token, self.direction), eth_usdt_sell_order_number_pool)
