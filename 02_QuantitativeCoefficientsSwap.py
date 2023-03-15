@@ -527,7 +527,7 @@ class GridStrategy(Process):
                             logger.info('{} 建仓成功, 购买数量: {} 订单返回值: {}'.format('BTCUSDT', self.min_qty, resOrder))
                             # 记录订单
                             btc_usdt_buy_order_number_pool = json.loads(self.redisClient.getKey("{}_futures_btc@usdt_buy_order_number_pool_{}".format(self.token, self.direction))).append(resOrder["orderId"])
-                            self.redisClient.setKey("{}_futures_btc@usdt_buy_order_number_pool_{}".format(self.token, self.direction), btc_usdt_buy_order_number_pool)
+                            self.redisClient.setKey("{}_futures_btc@usdt_buy_order_number_pool_{}".format(self.token, self.direction), json.dumps(btc_usdt_buy_order_number_pool))
                             # 记录下单价格
                             self.redisClient.setKey("{}_futures_btc@usdt_last_trade_price_{}".format(self.token, self.direction), self.redisClient.getKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction)))
                             # 记录下单池
@@ -556,7 +556,7 @@ class GridStrategy(Process):
                             logger.info('{} 建仓成功, 购买数量: {}, 订单返回值: {}'.format('ETHUSDT', ethUsdtOrderQuantity, resOrder))
                             # 记录订单
                             eth_usdt_buy_order_number_pool = json.loads(self.redisClient.getKey("{}_futures_eth@usdt_buy_order_number_pool_{}".format(self.token, self.direction))).append(resOrder["orderId"])
-                            self.redisClient.setKey("{}_futures_eth@usdt_buy_order_number_pool_{}".format(self.token, self.direction), eth_usdt_buy_order_number_pool)
+                            self.redisClient.setKey("{}_futures_eth@usdt_buy_order_number_pool_{}".format(self.token, self.direction), json.dumps(eth_usdt_buy_order_number_pool))
                             # 记录下单价格
                             self.redisClient.setKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction), self.redisClient.getKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction)))
                             # 记录下单池
