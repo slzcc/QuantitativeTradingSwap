@@ -18,6 +18,7 @@ import logging
 import os
 import numpy as np
 import websocket
+import pytz
 
 from utils.binance import tradeAPI
 from utils.binance.getKlineData import *
@@ -33,13 +34,14 @@ from logging.handlers import TimedRotatingFileHandler
 from multiprocessing import Process
 from decimal import Decimal
 
-def BeiJingDateTime(sec):
+def ShanghaiDateTime(sec):
     """
     设定北京时区
     """
-    if time.strftime('%z') == "+0800":
-        return datetime.datetime.now().timetuple()
-    return (datetime.datetime.now() + datetime.timedelta(hours=8)).timetuple()
+    # if time.strftime('%z') == "+0800":
+    #     return datetime.datetime.now().timetuple()
+    # return (datetime.datetime.now() + datetime.timedelta(hours=8)).timetuple()
+    return datetime.datetime.now(pytz.timezone('Asia/Shanghai')).timetuple()
 
 # 创建日志器对象
 ######################################## Logging __name__ #######################################
@@ -63,7 +65,7 @@ logger.addHandler(file_handler)
 # 设置格式并赋予handler
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 # 设置日志时区
-formatter.converter = BeiJingDateTime
+formatter.converter = ShanghaiDateTime
 
 console_handler.setFormatter(formatter)
 file_handler.setFormatter(formatter)

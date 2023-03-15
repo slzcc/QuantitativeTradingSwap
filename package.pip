@@ -8,3 +8,4 @@ websocket-client
 numpy
 statsmodels
 pandas_ta
+pytz
