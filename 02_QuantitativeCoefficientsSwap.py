@@ -287,18 +287,22 @@ class GridStrategy(Process):
         """
         检查订单当状态 NEW 返回 True, FILLED 返回 False
         """
-        orderInfo = trade.check_order(symbol, orderId).json()
+        try:
+            orderInfo = trade.check_order(symbol, orderId).json()
 
-        # 判断是否成功获取订单信息
-        if not "updateTime" in orderInfo.keys():
-            logger.warning("无法正常获取订单 updateTime, 对象数据: ".format(orderInfo))
+            # 判断是否成功获取订单信息
+            # if not "updateTime" in orderInfo.keys():
+            #     logger.warning("无法正常获取订单 updateTime, 对象数据: ".format(orderInfo))
+            #     return True
+
+            # 判断远程 API 当前 orderID 的状态 FILLED 为已经成功建仓 NEW 为委托单 EXPIRED 过期 CANCELED 取消订单
+            if orderInfo["status"] == "NEW":
+                logger.info("检查订单 {} 状态正常".format(orderId))
+                return False
             return True
-
-        # 判断远程 API 当前 orderID 的状态 FILLED 为已经成功建仓 NEW 为委托单 EXPIRED 过期 CANCELED 取消订单
-        if orderInfo["status"] == "NEW":
-            logger.info("检查订单 {} 状态正常".format(orderId))
-            return False
-        return True
+        except Exception as err:
+            logger.error("无法正常获取订单执行方法报错 {}, 对象数据: ".format(err, orderInfo))
+            return True
 
     # 计算收益
     def BTC_and_ETH_StatisticalIncome(self):
@@ -364,7 +368,7 @@ class GridStrategy(Process):
                 # 检查订单是否完成, 否则阻塞
                 while self.checkOrder(trade, 'BTCUSDT', resOrder["orderId"]):
                     time.sleep(1)
-                    logger.warning('{} 清仓订单状态异常订单号 {} 订单状态 {}'.format('BTCUSDT', resOrder["orderId"], resOrder["status"]))
+                    logger.warning('{} 清仓订单状态异常订单号 {} 订单状态 {}, {}/{}'.format('BTCUSDT', resOrder["orderId"], resOrder["status"], BUY_SELL, LONG_SHORT))
                 self.redisClient.setKey("{}_futures_btc@usdt_sell_order_number_pool_{}".format(self.token, self.direction), json.dumps(btc_usdt_sell_order_number_pool))
 
                 # 获取当前 gas
@@ -407,7 +411,7 @@ class GridStrategy(Process):
                 # 检查订单是否完成, 否则阻塞
                 while self.checkOrder(trade, 'ETHUSDT', resOrder["orderId"]):
                     time.sleep(1)
-                    logger.warning('{} 清仓订单状态异常订单号 {} 订单状态 {}'.format('ETHUSDT', resOrder["orderId"], resOrder["status"]))
+                    logger.warning('{} 清仓订单状态异常订单号 {} 订单状态 {}, {}/{}'.format('ETHUSDT', resOrder["orderId"], resOrder["status"], BUY_SELL, LONG_SHORT))
                 self.redisClient.setKey("{}_futures_eth@usdt_sell_order_number_pool_{}".format(self.token, self.direction), json.dumps(eth_usdt_sell_order_number_pool))
 
                 # 获取当前 gas
@@ -514,7 +518,7 @@ class GridStrategy(Process):
                     btc_usdt_profi_loss, eth_usdt_profi_loss = self.BTC_and_ETH_StatisticalIncome()
                     all_order_profit = Decimal(self.redisClient.getKey("{}_all_order_profit_{}".format(self.token, self.direction)))
                     now_profit = Decimal(btc_usdt_profi_loss + eth_usdt_profi_loss) + all_order_profit
-                    self.redisClient.setKey("{}_all_order_profit_{}".format(self.token, self.direction), now_profit)
+                    self.redisClient.setKey("{}_all_order_profit_{}".format(self.token, self.direction), float(now_profit))
 
                     time.sleep(5)
                     continue
@@ -565,7 +569,7 @@ class GridStrategy(Process):
                             usdt_number = Decimal(self.min_qty) * Decimal(self.redisClient.getKey("{}_futures_btc@usdt_last_trade_price_{}".format(self.token, self.direction)))
                             # 计算 gas 费用
                             now_gas = (usdt_number * Decimal(0.004)) + all_order_gas
-                            self.redisClient.setKey("{}_all_order_gas_{}".format(self.token, self.direction), str(now_gas))
+                            self.redisClient.setKey("{}_all_order_gas_{}".format(self.token, self.direction), float(now_gas))
 
                         ## 基于 BTC 开仓数量，计算出 ETH 需要的开仓数量
                         ## ETH/USDT 开单(最小下单量 0.004)
@@ -601,7 +605,7 @@ class GridStrategy(Process):
                             usdt_number = Decimal(ethUsdtOrderQuantity) * Decimal(self.redisClient.getKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction)))
                             # 计算 gas 费用
                             now_gas = (usdt_number * Decimal(0.004)) + all_order_gas
-                            self.redisClient.setKey("{}_all_order_gas_{}".format(self.token, self.direction), str(now_gas))
+                            self.redisClient.setKey("{}_all_order_gas_{}".format(self.token, self.direction), float(now_gas))
 
                     # 记录下单时间
                     self.redisClient.setKey("{}_last_order_time_{}".format(self.token, self.direction), time.time())
@@ -638,7 +642,7 @@ class GridStrategy(Process):
                         # 计算收益
                         all_order_profit = Decimal(self.redisClient.getKey("{}_all_order_profit_{}".format(self.token, self.direction)))
                         now_profit = Decimal(btc_usdt_profi_loss + eth_usdt_profi_loss) + all_order_profit
-                        self.redisClient.setKey("{}_all_order_profit_{}".format(self.token, self.direction), now_profit)
+                        self.redisClient.setKey("{}_all_order_profit_{}".format(self.token, self.direction), float(now_profit))
 
                     else:
                         logger.info('持续监听, 当前 BTCUSDT 盈损比例 {}, ETHUSDT 盈损比例 {}, 合计 {}'.format(btc_usdt_profi_loss, eth_usdt_profi_loss, btc_usdt_profi_loss + eth_usdt_profi_loss))
