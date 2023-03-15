@@ -65,7 +65,7 @@ logger.addHandler(file_handler)
 # 设置格式并赋予handler
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 # 设置日志时区
-formatter.converter = ShanghaiDateTime
+# formatter.converter = ShanghaiDateTime
 
 console_handler.setFormatter(formatter)
 file_handler.setFormatter(formatter)
