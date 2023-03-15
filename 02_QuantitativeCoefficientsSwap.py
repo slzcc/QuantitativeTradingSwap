@@ -333,16 +333,15 @@ class GridStrategy(Process):
             eth_usdt_profi_loss = (eth_usdt_present_price - eth_usdt_last_trade_price) / eth_usdt_present_price * self.ratio * 100
         return btc_usdt_profi_loss, eth_usdt_profi_loss
 
-    # 买卖/多空转换
-    def TrendShift(self, buy_sell, long_short):
-        if buy_sell == "BUY" and long_short == "LONG":
-            return 'SELL', 'SHORT'
-        elif buy_sell == "BUY" and long_short == "SHORT":
-            return 'SELL', 'LONG'
-        elif buy_sell == "SELL" and long_short == "LONG":
-            return 'BUY', 'SHORT'
-        elif buy_sell == "SELL" and long_short == "SHORT":
-            return 'BUY', 'LONG'
+    # 买卖 转换
+    def TrendShift(self, buy_sell):
+        """
+        用于买卖取反效果
+        """
+        if buy_sell == "BUY":
+            return 'SELL'
+        elif buy_sell == "SELL":
+            return 'BUY'
 
     # BTC 清仓
     def BtcUsdtForcedLiquidation(self, trade):
@@ -350,7 +349,7 @@ class GridStrategy(Process):
             ## 获取 BTC 方向
             BUY_SELL = self.redisClient.getKey("{}_btc_order_direction_{}".format(self.token, self.direction)).split("|")[0]
             LONG_SHORT = self.redisClient.getKey("{}_btc_order_direction_{}".format(self.token, self.direction)).split("|")[1]
-            BUY_SELL, LONG_SHORT = self.TrendShift(BUY_SELL, LONG_SHORT)
+            BUY_SELL = self.TrendShift(BUY_SELL)
 
             btc_order_pool = float(sum([Decimal(item) for item in json.loads(self.redisClient.getKey("{}_futures_btc@usdt_order_pool_{}".format(self.token, self.direction)))]))
             ## BTC/USDT 清仓
@@ -393,7 +392,7 @@ class GridStrategy(Process):
             ## 获取 ETH 方向
             BUY_SELL = self.redisClient.getKey("{}_eth_order_direction_{}".format(self.token, self.direction)).split("|")[0]
             LONG_SHORT = self.redisClient.getKey("{}_eth_order_direction_{}".format(self.token, self.direction)).split("|")[1]
-            BUY_SELL, LONG_SHORT = self.TrendShift(BUY_SELL, LONG_SHORT)
+            BUY_SELL = self.TrendShift(BUY_SELL)
 
             eth_order_pool = float(sum([Decimal(item) for item in json.loads(self.redisClient.getKey("{}_futures_eth@usdt_order_pool_{}".format(self.token, self.direction)))]))
             ## ETH/USDT 清仓
