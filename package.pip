@@ -9,3 +9,4 @@ numpy
 statsmodels
 pandas_ta
 pytz
+gevent

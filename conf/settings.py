@@ -35,7 +35,7 @@ elif API_TYPE == "BinanceTestNet":
 binance_recvWindow = 10000
 
 # Request to Response Written to the log
-ResponseLog = False
+ResponseLog = True
 
 # 告警提示
 MSG_TYPE = ""
