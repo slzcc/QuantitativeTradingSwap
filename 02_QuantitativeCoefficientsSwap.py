@@ -535,6 +535,13 @@ class GridStrategy(Process):
                             self.redisClient.setKey("{}_futures_btc@usdt_order_pool_{}".format(self.token, self.direction), json.dumps(btc_usdt_order_pool))
                             # 记录 BTC 下单方向
                             self.redisClient.setKey("{}_btc_order_direction_{}".format(self.token, self.direction), "{}|{}".format(BUY_SELL, LONG_SHORT))
+                            # 获取当前 gas
+                            all_order_gas = Decimal(self.redisClient.getKey("{}_all_order_gas_{}".format(self.token, self.direction)))
+                            # 计算当前 BTC USDT 数量
+                            usdt_number = Decimal(self.min_qty) * Decimal(self.redisClient.getKey("{}_futures_btc@usdt_last_trade_price_{}".format(self.token, self.direction)))
+                            # 计算 gas 费用
+                            now_gas = (usdt_number * Decimal(0.004)) + all_order_gas
+                            self.redisClient.setKey("{}_all_order_gas_{}".format(self.token, self.direction), str(now_gas))
 
                         ## 基于 BTC 开仓数量，计算出 ETH 需要的开仓数量
                         ## ETH/USDT 开单(最小下单量 0.004)
@@ -564,6 +571,13 @@ class GridStrategy(Process):
                             self.redisClient.setKey("{}_futures_eth@usdt_order_pool_{}".format(self.token, self.direction), json.dumps(eth_usdt_order_pool))
                             # 记录 ETH 下单方向
                             self.redisClient.setKey("{}_eth_order_direction_{}".format(self.token, self.direction), "{}|{}".format(BUY_SELL, LONG_SHORT))
+                            # 获取当前 gas
+                            all_order_gas = Decimal(self.redisClient.getKey("{}_all_order_gas_{}".format(self.token, self.direction)))
+                            # 计算当前 ETC USDT 数量
+                            usdt_number = Decimal(ethUsdtOrderQuantity) * Decimal(self.redisClient.getKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction)))
+                            # 计算 gas 费用
+                            now_gas = (usdt_number * Decimal(0.004)) + all_order_gas
+                            self.redisClient.setKey("{}_all_order_gas_{}".format(self.token, self.direction), str(now_gas))
 
                     # 记录下单时间
                     self.redisClient.setKey("{}_last_order_time_{}".format(self.token, self.direction), time.time())
