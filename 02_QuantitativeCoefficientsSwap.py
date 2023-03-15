@@ -365,15 +365,15 @@ class GridStrategy(Process):
                 while self.checkOrder(trade, 'BTCUSDT', resOrder["orderId"]):
                     time.sleep(1)
                     logger.warning('{} 清仓订单状态异常订单号 {} 订单状态 {}'.format('BTCUSDT', resOrder["orderId"], resOrder["status"]))
-                self.redisClient.setKey("{}_futures_btc@usdt_sell_order_number_pool_{}".format(self.token, self.direction), btc_usdt_sell_order_number_pool)
+                self.redisClient.setKey("{}_futures_btc@usdt_sell_order_number_pool_{}".format(self.token, self.direction), json.dumps(btc_usdt_sell_order_number_pool))
 
                 # 获取当前 gas
-                all_order_gas = Decimal(self.redisClient.getKey("{}_all_order_gas_{}".format(self.token, self.direction)))
+                all_order_gas = float(self.redisClient.getKey("{}_all_order_gas_{}".format(self.token, self.direction)))
                 # 计算当前 BTC USDT 数量
-                usdt_number = Decimal(btc_order_pool) * Decimal(self.redisClient.getKey("{}_futures_btc@usdt_last_trade_price_{}".format(self.token, self.direction)))
+                usdt_number = Decimal(btc_order_pool) * Decimal(float(self.redisClient.getKey("{}_futures_btc@usdt_last_trade_price_{}".format(self.token, self.direction))))
                 # 计算 gas 费用
-                now_gas = (usdt_number * Decimal(0.004)) + all_order_gas
-                self.redisClient.setKey("{}_all_order_gas_{}".format(self.token, self.direction), str(now_gas))
+                now_gas = (usdt_number * Decimal(0.004)) + Decimal(all_order_gas)
+                self.redisClient.setKey("{}_all_order_gas_{}".format(self.token, self.direction), float(now_gas))
 
                 # 清除下单价格
                 self.redisClient.setKey("{}_futures_btc@usdt_last_trade_price_{}".format(self.token, self.direction), 0.0)
@@ -408,15 +408,15 @@ class GridStrategy(Process):
                 while self.checkOrder(trade, 'ETHUSDT', resOrder["orderId"]):
                     time.sleep(1)
                     logger.warning('{} 清仓订单状态异常订单号 {} 订单状态 {}'.format('ETHUSDT', resOrder["orderId"], resOrder["status"]))
-                self.redisClient.setKey("{}_futures_eth@usdt_sell_order_number_pool_{}".format(self.token, self.direction), eth_usdt_sell_order_number_pool)
+                self.redisClient.setKey("{}_futures_eth@usdt_sell_order_number_pool_{}".format(self.token, self.direction), json.dumps(eth_usdt_sell_order_number_pool))
 
                 # 获取当前 gas
-                all_order_gas = Decimal(self.redisClient.getKey("{}_all_order_gas_{}".format(self.token, self.direction)))
+                all_order_gas = float(self.redisClient.getKey("{}_all_order_gas_{}".format(self.token, self.direction)))
                 # 计算当前 ETC USDT 数量
-                usdt_number = Decimal(eth_order_pool) * Decimal(self.redisClient.getKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction)))
+                usdt_number = Decimal(eth_order_pool) * Decimal(float(self.redisClient.getKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction))))
                 # 计算 gas 费用
-                now_gas = (usdt_number * Decimal(0.004)) + all_order_gas
-                self.redisClient.setKey("{}_all_order_gas_{}".format(self.token, self.direction), str(now_gas))
+                now_gas = (usdt_number * Decimal(0.004)) + Decimal(all_order_gas)
+                self.redisClient.setKey("{}_all_order_gas_{}".format(self.token, self.direction), float(now_gas))
 
                 # 清除下单价格
                 self.redisClient.setKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction), 0.0)
