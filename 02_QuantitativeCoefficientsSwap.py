@@ -365,7 +365,8 @@ class GridStrategy(Process):
                 logger.error('%s 清仓失败 \t %s \t %s' % ('BTCUSDT', str(resOrder), PublicModels.changeTime(time.time())))
             else:
                 # 记录订单
-                btc_usdt_sell_order_number_pool = json.loads(self.redisClient.getKey("{}_futures_btc@usdt_sell_order_number_pool_{}".format(self.token, self.direction))).append(resOrder["orderId"])
+                btc_usdt_sell_order_number_pool = json.loads(self.redisClient.getKey("{}_futures_btc@usdt_sell_order_number_pool_{}".format(self.token, self.direction)))
+                btc_usdt_sell_order_number_pool.append(resOrder["orderId"])
                 # 检查订单是否完成, 否则阻塞
                 while self.checkOrder(trade, 'BTCUSDT', resOrder["orderId"]):
                     time.sleep(1)
@@ -404,7 +405,8 @@ class GridStrategy(Process):
                 logger.error('%s 清仓失败 \t %s \t %s' % ('ETHUSDT', str(resOrder), PublicModels.changeTime(time.time())))
             else:
                 # 记录订单
-                eth_usdt_sell_order_number_pool = json.loads(self.redisClient.getKey("{}_futures_eth@usdt_sell_order_number_pool_{}".format(self.token, self.direction))).append(resOrder["orderId"])
+                eth_usdt_sell_order_number_pool = json.loads(self.redisClient.getKey("{}_futures_eth@usdt_sell_order_number_pool_{}".format(self.token, self.direction)))
+                eth_usdt_sell_order_number_pool.append(resOrder["orderId"])
                 # 检查订单是否完成, 否则阻塞
                 while self.checkOrder(trade, 'ETHUSDT', resOrder["orderId"]):
                     time.sleep(1)
