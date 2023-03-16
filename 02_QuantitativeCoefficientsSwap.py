@@ -299,6 +299,7 @@ class GridStrategy(Process):
             if orderInfo["status"] == "NEW":
                 logger.info("检查订单 {} 状态正常".format(orderId))
                 return False
+            logger.warning("当前订单状态: {}".format(orderInfo))
             return True
         except Exception as err:
             logger.error("无法正常获取订单执行方法报错 {}, 对象数据: ".format(err))
