@@ -21,6 +21,7 @@ import numpy as np
 import websocket
 import pytz
 import gevent
+import asyncio
 
 from utils.binance import tradeAPI
 from utils.binance.getKlineData import *
@@ -30,7 +31,7 @@ from utils import public as PublicModels
 from utils.method import redisMethod
 from utils.method import toolsMethod
 from utils.method.toolsMethod import globalSetOrderIDStatus
-
+from threading import Thread
 from utils.QuantitativeCoefficientSwapUtils import command_line_args
 from logging.handlers import TimedRotatingFileHandler
 from multiprocessing import Process
@@ -169,9 +170,9 @@ class GridStrategy(Process):
             self.redisClient.setKey("{}_forced_liquidation_{}".format(self.token, self.direction), 'false')
 
         # 趋势默认值, 当前价格高于此值时 ETH 开空, BTC 开多
-        # 峰值 0.074, 2023-03-15 压力值 0.067
+        # 峰值 0.074, 2023-03-16 压力值 0.066
         if not self.redisClient.getKey("{}_long_short_trend_{}".format(self.token, self.direction)):
-            self.redisClient.setKey("{}_long_short_trend_{}".format(self.token, self.direction), '0.067')
+            self.redisClient.setKey("{}_long_short_trend_{}".format(self.token, self.direction), '0.066')
 
         # ETH 下单方向
         # BUY/SELL | LONG/SHORT
@@ -352,7 +353,7 @@ class GridStrategy(Process):
             return 'BUY'
 
     # BTC 清仓
-    def BtcUsdtForcedLiquidation(self, trade):
+    async def BtcUsdtForcedLiquidation(self, trade):
         try:
             ## 获取 BTC 方向
             BUY_SELL = self.redisClient.getKey("{}_btc_order_direction_{}".format(self.token, self.direction)).split("|")[0]
@@ -392,7 +393,7 @@ class GridStrategy(Process):
             logger.error('{} 清仓异常错误: {}'.format('BTCUSDT', err))
 
     # ETH 清仓
-    def EthUsdtForcedLiquidation(self, trade):
+    async def EthUsdtForcedLiquidation(self, trade):
         try:
             ## 获取 ETH 方向
             BUY_SELL = self.redisClient.getKey("{}_eth_order_direction_{}".format(self.token, self.direction)).split("|")[0]
@@ -499,13 +500,14 @@ class GridStrategy(Process):
                 # 强制平仓
                 if self.redisClient.getKey("{}_forced_liquidation_{}".format(self.token, self.direction)) == 'true':
                     logger.info('{} 强制平仓'.format('BTCUSDT'))
+
                     ## BTC/USDT 清仓
                     g1 = gevent.spawn(self.BtcUsdtForcedLiquidation, trade)
                     ## ETH/USDT 清仓
                     g2 = gevent.spawn(self.EthUsdtForcedLiquidation, trade)
 
-                    g1.join()
-                    g2.join()
+                    g1.start()
+                    g2.start()
 
                     # 恢复强制平仓配置
                     self.redisClient.setKey("{}_forced_liquidation_{}".format(self.token, self.direction), 'false')
@@ -631,12 +633,16 @@ class GridStrategy(Process):
                                                                                                     eth_usdt_profi_loss,
                                                                                                     btc_usdt_profi_loss + eth_usdt_profi_loss))
                         ## BTC/USDT 清仓
-                        g1 = gevent.spawn(self.BtcUsdtForcedLiquidation, trade)
+                        # g1 = gevent.spawn(self.BtcUsdtForcedLiquidation, trade)
+                        t1 = Thread(target=self.BtcUsdtForcedLiquidation, args=(trade,))
                         ## ETH/USDT 清仓
-                        g2 = gevent.spawn(self.EthUsdtForcedLiquidation, trade)
+                        # g2 = gevent.spawn(self.EthUsdtForcedLiquidation, trade)
+                        t2 = Thread(target=self.EthUsdtForcedLiquidation, args=(trade,))
 
-                        g1.join()
-                        g2.join()
+                        # g1.join()
+                        # g2.join()
+                        t1.start()
+                        t2.start()
 
                         # 计算收益
                         all_order_profit = Decimal(self.redisClient.getKey("{}_all_order_profit_{}".format(self.token, self.direction)))
