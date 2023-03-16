@@ -385,11 +385,7 @@ class GridStrategy(Process):
                 # 清除下单池
                 self.redisClient.setKey("{}_futures_btc@usdt_order_pool_{}".format(self.token, self.direction), '[]')
 
-                logger.info('{} 清仓成功, 卖出数量: {}'.format('BTCUSDT', float(sum([Decimal(item) for item in
-                                                                                     json.loads(self.redisClient.getKey(
-                                                                                         "{}_futures_btc@usdt_order_pool_{}".format(
-                                                                                             self.token,
-                                                                                             self.direction)))]))))
+                logger.info('{} 清仓成功, 卖出数量: {}'.format('BTCUSDT', btc_order_pool))
         except Exception as err:
             logger.error('{} 清仓异常错误: {}'.format('BTCUSDT', err))
 
@@ -533,6 +529,7 @@ class GridStrategy(Process):
                 # 判断下单池是否为空
                 btc_usdt_order_pool = json.loads(self.redisClient.getKey("{}_futures_btc@usdt_order_pool_{}".format(self.token, self.direction)))
                 eth_usdt_order_pool = json.loads(self.redisClient.getKey("{}_futures_eth@usdt_order_pool_{}".format(self.token, self.direction)))
+
                 # 如果没有被下单则进行第一次下单
                 if len(btc_usdt_order_pool) == 0 and len(eth_usdt_order_pool) == 0:
                     # 停止下单
@@ -555,7 +552,8 @@ class GridStrategy(Process):
                         else:
                             logger.info('{} 建仓成功, 购买数量: {} 订单返回值: {}'.format('BTCUSDT', self.min_qty, resOrder))
                             # 记录订单
-                            btc_usdt_buy_order_number_pool = json.loads(self.redisClient.getKey("{}_futures_btc@usdt_buy_order_number_pool_{}".format(self.token, self.direction))).append(resOrder["orderId"])
+                            btc_usdt_buy_order_number_pool = json.loads(self.redisClient.getKey("{}_futures_btc@usdt_buy_order_number_pool_{}".format(self.token, self.direction)))
+                            btc_usdt_buy_order_number_pool.append(resOrder["orderId"])
                             self.redisClient.setKey("{}_futures_btc@usdt_buy_order_number_pool_{}".format(self.token, self.direction), json.dumps(btc_usdt_buy_order_number_pool))
                             # 记录下单价格
                             self.redisClient.setKey("{}_futures_btc@usdt_last_trade_price_{}".format(self.token, self.direction), self.redisClient.getKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction)))
@@ -591,7 +589,8 @@ class GridStrategy(Process):
                         else:
                             logger.info('{} 建仓成功, 购买数量: {}, 订单返回值: {}'.format('ETHUSDT', ethUsdtOrderQuantity, resOrder))
                             # 记录订单
-                            eth_usdt_buy_order_number_pool = json.loads(self.redisClient.getKey("{}_futures_eth@usdt_buy_order_number_pool_{}".format(self.token, self.direction))).append(resOrder["orderId"])
+                            eth_usdt_buy_order_number_pool = json.loads(self.redisClient.getKey("{}_futures_eth@usdt_buy_order_number_pool_{}".format(self.token, self.direction)))
+                            eth_usdt_buy_order_number_pool.append(resOrder["orderId"])
                             self.redisClient.setKey("{}_futures_eth@usdt_buy_order_number_pool_{}".format(self.token, self.direction), json.dumps(eth_usdt_buy_order_number_pool))
                             # 记录下单价格
                             self.redisClient.setKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction), self.redisClient.getKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction)))
