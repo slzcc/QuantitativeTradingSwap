@@ -296,13 +296,13 @@ class GridStrategy(Process):
             #     return True
 
             # 判断远程 API 当前 orderID 的状态 FILLED 为已经成功建仓 NEW 为委托单 EXPIRED 过期 CANCELED 取消订单
-            if orderInfo["status"] == "NEW":
+            if orderInfo["status"] == "FILLED":
                 logger.info("检查订单 {} 状态正常".format(orderId))
                 return False
             logger.warning("当前订单状态: {}".format(orderInfo))
             return True
         except Exception as err:
-            logger.error("无法正常获取订单执行方法报错 {}, 对象数据: ".format(err))
+            logger.error("无法正常获取订单执行方法报错 {}, 对象数据: {}".format(err, orderId))
             return True
 
     # 计算收益
