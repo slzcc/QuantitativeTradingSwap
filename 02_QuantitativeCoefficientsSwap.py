@@ -385,7 +385,7 @@ class GridStrategy(Process):
                 # 清除下单池
                 self.redisClient.setKey("{}_futures_btc@usdt_order_pool_{}".format(self.token, self.direction), '[]')
 
-                logger.info('{} 清仓成功, 卖出数量: {}'.format('BTCUSDT', btc_order_pool))
+                logger.info('{} 清仓成功, 卖出数量: {}, 等价 USDT: {}, GAS: {}'.format('BTCUSDT', btc_order_pool, float(usdt_number), float(now_gas)))
         except Exception as err:
             logger.error('{} 清仓异常错误: {}'.format('BTCUSDT', err))
 
@@ -424,11 +424,7 @@ class GridStrategy(Process):
                 # 清除下单池
                 self.redisClient.setKey("{}_futures_eth@usdt_order_pool_{}".format(self.token, self.direction), '[]')
 
-                logger.info('{} 清仓成功, 卖出数量: {}'.format('ETHUSDT', float(sum([Decimal(item) for item in
-                                                                                     json.loads(self.redisClient.getKey(
-                                                                                         "{}_futures_eth@usdt_order_pool_{}".format(
-                                                                                             self.token,
-                                                                                             self.direction)))]))))
+                logger.info('{} 清仓成功, 卖出数量: {}, 等价 USDT: {}, GAS: {}'.format('ETHUSDT', eth_order_pool, float(usdt_number), float(now_gas)))
         except Exception as err:
             logger.error('{} 清仓异常错误: {}'.format('ETHUSDT', err))
         
