@@ -11,8 +11,8 @@
 #***********************************************
 
 # API 类型
-# API_TYPE = "Binance"
-API_TYPE = "BinanceTestNet"
+API_TYPE = "Binance"
+# API_TYPE = "BinanceTestNet"
 
 # 判定当前接口类型
 if API_TYPE == "Binance":

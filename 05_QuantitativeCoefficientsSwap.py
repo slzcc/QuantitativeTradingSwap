@@ -20,8 +20,6 @@ import os
 import numpy as np
 import websocket
 import pytz
-import gevent
-import asyncio
 
 from utils.binance import tradeAPI
 from utils.binance.getKlineData import *
@@ -353,7 +351,7 @@ class GridStrategy(Process):
             return 'BUY'
 
     # BTC 清仓
-    async def BtcUsdtForcedLiquidation(self, trade):
+    def BtcUsdtForcedLiquidation(self, trade):
         try:
             ## 获取 BTC 方向
             BUY_SELL = self.redisClient.getKey("{}_btc_order_direction_{}".format(self.token, self.direction)).split("|")[0]
@@ -393,7 +391,7 @@ class GridStrategy(Process):
             logger.error('{} 清仓异常错误: {}'.format('BTCUSDT', err))
 
     # ETH 清仓
-    async def EthUsdtForcedLiquidation(self, trade):
+    def EthUsdtForcedLiquidation(self, trade):
         try:
             ## 获取 ETH 方向
             BUY_SELL = self.redisClient.getKey("{}_eth_order_direction_{}".format(self.token, self.direction)).split("|")[0]
@@ -502,9 +500,9 @@ class GridStrategy(Process):
                     logger.info('{} 强制平仓'.format('BTCUSDT'))
 
                     ## BTC/USDT 清仓
-                    g1 = gevent.spawn(self.BtcUsdtForcedLiquidation, trade)
+                    g1 = Process(target=self.BtcUsdtForcedLiquidation, args=(trade,))
                     ## ETH/USDT 清仓
-                    g2 = gevent.spawn(self.EthUsdtForcedLiquidation, trade)
+                    g2 = Process(target=self.EthUsdtForcedLiquidation, args=(trade,))
 
                     g1.start()
                     g2.start()
@@ -633,16 +631,12 @@ class GridStrategy(Process):
                                                                                                     eth_usdt_profi_loss,
                                                                                                     btc_usdt_profi_loss + eth_usdt_profi_loss))
                         ## BTC/USDT 清仓
-                        # g1 = gevent.spawn(self.BtcUsdtForcedLiquidation, trade)
-                        t1 = Thread(target=self.BtcUsdtForcedLiquidation, args=(trade,))
+                        g1 = Process(target=self.BtcUsdtForcedLiquidation, args=(trade,))
                         ## ETH/USDT 清仓
-                        # g2 = gevent.spawn(self.EthUsdtForcedLiquidation, trade)
-                        t2 = Thread(target=self.EthUsdtForcedLiquidation, args=(trade,))
+                        g2 = Process(target=self.EthUsdtForcedLiquidation, args=(trade,))
 
-                        # g1.join()
-                        # g2.join()
-                        t1.start()
-                        t2.start()
+                        g1.start()
+                        g2.start()
 
                         # 计算收益
                         all_order_profit = Decimal(self.redisClient.getKey("{}_all_order_profit_{}".format(self.token, self.direction)))
