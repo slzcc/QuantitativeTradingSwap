@@ -301,7 +301,7 @@ class GridStrategy(Process):
                 return False
             return True
         except Exception as err:
-            logger.error("无法正常获取订单执行方法报错 {}, 对象数据: ".format(err, orderInfo))
+            logger.error("无法正常获取订单执行方法报错 {}, 对象数据: ".format(err))
             return True
 
     # 计算收益
