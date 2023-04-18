@@ -203,6 +203,57 @@ class GridStrategy(Process):
         # 记录上一次下单时间
         if not self.redisClient.getKey("{}_last_order_time_{}".format(self.token, self.direction)):
             self.redisClient.setKey("{}_last_order_time_{}".format(self.token, self.direction), 0)
+        # help default
+        # Key 说明
+        if not self.redisClient.getKey("{}_help_{}".format(self.token, self.direction)):
+            _help_text = """
+            # 初始化 Redis 默认数据
+            01、获取最新价格 btc/usdt: _futures_btc@usdt_present_price_ 
+            02、获取下单价格 btc/usdt: _futures_btc@usdt_last_trade_price_ 
+            03、获取下单池 btc/usdt (下单数量): _futures_btc@usdt_order_pool_ 
+            
+            # 获取订单池 btc/usdt (订单号): 
+            04、购买池: _futures_btc@usdt_buy_order_number_pool_ 
+            05、出售池: _futures_btc@usdt_sell_order_number_pool_
+            
+            06、获取最新价格 eth/usdt: _futures_eth@usdt_present_price_
+            07、获取下单价格 eth/usdt: _futures_eth@usdt_last_trade_price_
+            08、获取下单池 eth/usdt (下单数量): _futures_eth@usdt_order_pool_
+            
+            # 获取订单池 eth/usdt (订单号)
+            09、购买池: _futures_eth@usdt_buy_order_number_pool_
+            10、出售池: _futures_eth@usdt_sell_order_number_pool_
+            
+            11、获取最新价格 eth/btc: _spot_eth@btc_present_price_
+            12、获取下单价格 eth/btc: _spot_eth@btc_last_trade_price_
+            13、获取下单池 eth/btc: _spot_eth@btc_order_pool_
+            
+            14、停止下单: _order_pause_
+            15、手续费(U): _all_order_gas_
+            16、利润(U): _all_order_profit_
+            17、亏损(U): _all_order_loss_
+            18、强制平仓: _forced_liquidation_
+            
+            # 趋势默认值, 当前价格高于此值时 ETH 开空, BTC 开多
+            # 峰值 0.074, 2023-03-16 压力值 0.066
+            19、系数值: _long_short_trend_
+            20、ETH 下单方向(BUY/SELL | LONG/SHORT): _eth_order_direction_
+            21、BTC 下单方向(BUY/SELL | LONG/SHORT): _btc_order_direction_
+            
+            # 默认 false， 当等于 true 时, 则不会自动平单
+            # 如果手动进行凭单请清空 redis 数据重启服务! 切记
+            22、手动模式: _manual_mode_
+            
+            # 多空方向, 由 _long_short_trend_ key 判定得出, 默认为 1, 即: ETH 开空, BTC 开多
+            # 值 0/1
+            # 1(default): ETH 开空, BTC 开多
+            # 0 : ETH 开多, BTC 开空
+            23、多空方向: _long_short_direction_
+            
+            24、记录当前运行时间: _t_start_
+            25、记录上一次下单时间: _last_order_time_
+            """
+            self.redisClient.setKey("{}_help_{}".format(self.token, self.direction), 0)
 
         # 如果日志目录不存在进行创建
         if not os.path.exists('logs'):
@@ -531,6 +582,7 @@ class GridStrategy(Process):
 
                 # 如果没有被下单则进行第一次下单
                 if len(btc_usdt_order_pool) == 0 and len(eth_usdt_order_pool) == 0:
+                    time.sleep(5)
                     # 停止下单
                     if self.redisClient.getKey("{}_order_pause_{}".format(self.token, self.direction)) == 'true':
                         logger.info('{} 停止下单状态'.format('BTCUSDT and ETHUSDT'))
