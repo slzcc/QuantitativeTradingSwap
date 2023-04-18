@@ -253,7 +253,7 @@ class GridStrategy(Process):
             24、记录当前运行时间: _t_start_
             25、记录上一次下单时间: _last_order_time_
             """
-            self.redisClient.setKey("{}_help_{}".format(self.token, self.direction), 0)
+            self.redisClient.setKey("{}_help_{}".format(self.token, self.direction), _help_text)
 
         # 如果日志目录不存在进行创建
         if not os.path.exists('logs'):
