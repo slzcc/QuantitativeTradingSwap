@@ -1,10 +1,10 @@
 {
   "ETHBTC": {
     "price_precision": 1,
-    "min_qty": 0.002,
+    "min_qty": 0.004,
     "profit": 4,
-    "min_profit": 0.02,
-    "ratio": 5,
+    "min_profit": 0.04,
+    "ratio": 10,
     "loss": 0.05
   }
 }
