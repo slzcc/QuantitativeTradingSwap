@@ -667,7 +667,7 @@ class GridStrategy(Process):
 
                         ## BTC/USDT 开单(最小下单量 0.001)
                         logger.info('{} 准备建仓'.format('BTCUSDT'))
-                        resOrder = trade.open_order('BTCUSDT', BUY_SELL, (self.min_qty / 2), price=None, positionSide=LONG_SHORT).json()
+                        resOrder = trade.open_order('BTCUSDT', BUY_SELL, self.min_qty, price=None, positionSide=LONG_SHORT).json()
                         if not 'orderId' in resOrder.keys():
                             if resOrder['msg'] == 'Margin is insufficient.':
                                 logger.error('%s 建仓失败, 可用金不足 \t %s \t %s' % ('BTCUSDT', str(resOrder), PublicModels.changeTime(time.time())))
