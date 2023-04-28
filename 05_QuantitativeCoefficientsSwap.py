@@ -127,14 +127,6 @@ class GridStrategy(Process):
         if not self.redisClient.getKey("{}_futures_eth@usdt_order_pool_{}".format(self.token, self.direction)):
             self.redisClient.setKey("{}_futures_eth@usdt_order_pool_{}".format(self.token, self.direction), '[]')
 
-        # 获取订单方向 btc/usdt
-        if not self.redisClient.getKey("{}_futures_btc@usdt_long_short_direction_{}".format(self.token, self.direction)):
-            self.redisClient.setKey("{}_futures_btc@usdt_long_short_direction_{}".format(self.token, self.direction), '')
-
-        # 获取订单方向 eth/usdt
-        if not self.redisClient.getKey("{}_futures_eth@usdt_long_short_direction_{}".format(self.token, self.direction)):
-            self.redisClient.setKey("{}_futures_eth@usdt_long_short_direction_{}".format(self.token, self.direction), '')
-
         # 获取订单池 eth/usdt (订单号)
         ## 购买池
         if not self.redisClient.getKey("{}_futures_eth@usdt_buy_order_number_pool_{}".format(self.token, self.direction)):
