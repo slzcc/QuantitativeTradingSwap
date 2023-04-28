@@ -127,6 +127,14 @@ class GridStrategy(Process):
         if not self.redisClient.getKey("{}_futures_eth@usdt_order_pool_{}".format(self.token, self.direction)):
             self.redisClient.setKey("{}_futures_eth@usdt_order_pool_{}".format(self.token, self.direction), '[]')
 
+        # 获取订单方向 btc/usdt
+        if not self.redisClient.getKey("{}_futures_btc@usdt_long_short_direction_{}".format(self.token, self.direction)):
+            self.redisClient.setKey("{}_futures_btc@usdt_long_short_direction_{}".format(self.token, self.direction), '')
+
+        # 获取订单方向 eth/usdt
+        if not self.redisClient.getKey("{}_futures_eth@usdt_long_short_direction_{}".format(self.token, self.direction)):
+            self.redisClient.setKey("{}_futures_eth@usdt_long_short_direction_{}".format(self.token, self.direction), '')
+
         # 获取订单池 eth/usdt (订单号)
         ## 购买池
         if not self.redisClient.getKey("{}_futures_eth@usdt_buy_order_number_pool_{}".format(self.token, self.direction)):
@@ -237,7 +245,7 @@ class GridStrategy(Process):
             18、强制平仓: {0}_forced_liquidation_{1}
             
             # 趋势默认值, 当前价格高于此值时 ETH 开空, BTC 开多
-            # 峰值 0.074, 2023-03-16 压力值 0.066
+            # 峰值 0.074, 2023-04-28 压力值 0.065
             19、系数值: {0}_long_short_trend_{1}
             20、ETH 下单方向(BUY/SELL | LONG/SHORT): {0}_eth_order_direction_{1}
             21、BTC 下单方向(BUY/SELL | LONG/SHORT): {0}_btc_order_direction_{1}
@@ -374,9 +382,9 @@ class GridStrategy(Process):
             "{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction)))
 
         ## 获取 ETH 方向
-        ETH_BUY_SELL, ETH_LONG_SHORT = self.LongShortDirection('ETHUSDT')
+        ETH_LONG_SHORT = self.redisClient.getKey("{}_eth_order_direction_{}".format(self.token, self.direction)).split("|")[1]
         ## 获取 BTC 方向
-        BTC_BUY_SELL, BTC_LONG_SHORT = self.LongShortDirection('BTCUSDT')
+        BTC_LONG_SHORT = self.redisClient.getKey("{}_btc_order_direction_{}".format(self.token, self.direction)).split("|")[1]
 
         btc_usdt_profi_loss, eth_usdt_profi_loss = 0, 0
 
@@ -438,6 +446,8 @@ class GridStrategy(Process):
                 self.redisClient.setKey("{}_futures_btc@usdt_last_trade_price_{}".format(self.token, self.direction), 0.0)
                 # 清除下单池
                 self.redisClient.setKey("{}_futures_btc@usdt_order_pool_{}".format(self.token, self.direction), '[]')
+                # 清除下单方向
+                self.redisClient.setKey("{}_btc_order_direction_{}".format(self.token, self.direction), '')
 
                 logger.info('{} 清仓成功, 卖出数量: {}, 等价 USDT: {}, GAS: {}'.format('BTCUSDT', btc_order_pool, float(usdt_number), float(now_gas)))
         except Exception as err:
@@ -478,6 +488,8 @@ class GridStrategy(Process):
                 self.redisClient.setKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction), 0.0)
                 # 清除下单池
                 self.redisClient.setKey("{}_futures_eth@usdt_order_pool_{}".format(self.token, self.direction), '[]')
+                # 清除下单方向
+                self.redisClient.setKey("{}_eth_order_direction_{}".format(self.token, self.direction), '')
 
                 logger.info('{} 清仓成功, 卖出数量: {}, 等价 USDT: {}, GAS: {}'.format('ETHUSDT', eth_order_pool, float(usdt_number), float(now_gas)))
         except Exception as err:
@@ -672,9 +684,11 @@ class GridStrategy(Process):
 
                 else:
                     ## 获取 ETH 方向
-                    ETH_BUY_SELL, ETH_LONG_SHORT = self.LongShortDirection('ETHUSDT')
+                    ETH_BUY_SELL = self.redisClient.getKey("{}_eth_order_direction_{}".format(self.token, self.direction)).split("|")[0]
+                    ETH_LONG_SHORT = self.redisClient.getKey("{}_eth_order_direction_{}".format(self.token, self.direction)).split("|")[1]
                     ## 获取 BTC 方向
-                    BTC_BUY_SELL, BTC_LONG_SHORT = self.LongShortDirection('BTCUSDT')
+                    BTC_BUY_SELL = self.redisClient.getKey("{}_btc_order_direction_{}".format(self.token, self.direction)).split("|")[0]
+                    BTC_LONG_SHORT = self.redisClient.getKey("{}_btc_order_direction_{}".format(self.token, self.direction)).split("|")[1]
 
                     # 计算收益
                     btc_usdt_profi_loss, eth_usdt_profi_loss = self.BTC_and_ETH_StatisticalIncome()
