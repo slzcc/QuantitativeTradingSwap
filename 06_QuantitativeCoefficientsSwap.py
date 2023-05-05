@@ -5,10 +5,10 @@
 #        Author: shilei@hotstone.com.cn
 #   Description: 量化系数交易
 #                可基于 ETH/BTC 系数值判定开仓方向
-#                05 的解耦版本
+#                05 的解耦版本, 默认单币当亏损到阀值后进入双币多空模式
 #
 #        Create: 2022-10-31 17:11:32
-# Last Modified: 2023-04-28 11:12:33
+# Last Modified: 2023-05-05 11:12:33
 #
 #***********************************************
 
@@ -38,7 +38,7 @@ from decimal import Decimal
 
 def ShanghaiDateTime(sec):
     """
-    设定北京时区
+    设定 Log 北京时区
     """
     # if time.strftime('%z') == "+0800":
     #     return datetime.datetime.now().timetuple()
@@ -302,9 +302,15 @@ class GridStrategy(Process):
             os.mkdir('logs')
 
     def on_open_binance_btcusdt_kline(self, ws):
+        """
+        websocket 获取 BTC/USDT 合约 1分钟 K 线
+        """
         subscribe_message = {"method": "SUBSCRIBE", "params": ["btcusdt@kline_1m"], "id": 1}
         ws.send(json.dumps(subscribe_message))
     def on_message_binance_btcusdt_kline(self, ws, message):
+        """
+        对通过 websocket 获取的 BTC/USDT 合约数据获取最新价格存入 Redis 中
+        """
         try:
             _message = json.loads(message)
         except Exception as err:
@@ -315,9 +321,15 @@ class GridStrategy(Process):
             self.redisClient.setKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction), _message["k"]["c"])
 
     def on_open_binance_ethusdt_kline(self, ws):
+        """
+        websocket 获取 ETH/USDT 合约 1分钟 K 线
+        """
         subscribe_message = {"method": "SUBSCRIBE", "params": ["ethusdt@kline_1m"], "id": 1}
         ws.send(json.dumps(subscribe_message))
     def on_message_binance_ethusdt_kline(self, ws, message):
+        """
+        对通过 websocket 获取的 ETH/USDT 合约数据获取最新价格存入 Redis 中
+        """
         try:
             _message = json.loads(message)
         except Exception as err:
@@ -328,9 +340,15 @@ class GridStrategy(Process):
             self.redisClient.setKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction), _message["k"]["c"])
 
     def on_open_binance_ethbtc_kline(self, ws):
+        """
+        websocket 获取 ETH/BTC 现货 1分钟 K 线
+        """
         subscribe_message = {"method": "SUBSCRIBE", "params": ["ethbtc@kline_1m"], "id": 1}
         ws.send(json.dumps(subscribe_message))
     def on_message_binance_ethbtc_kline(self, ws, message):
+        """
+        对通过 websocket 获取的 ETH/BTC 现货数据获取最新价格存入 Redis 中
+        """
         try:
             _message = json.loads(message)
         except Exception as err:
@@ -341,9 +359,15 @@ class GridStrategy(Process):
             self.redisClient.setKey("{}_spot_eth@btc_present_price_{}".format(self.token, self.direction), _message["k"]["c"])
 
     def on_close(self):
+        """
+        关闭 websocket 时执行
+        """
         print("closed connection")
 
     def getBinanceBtcUsdtKlineWS(self):
+        """
+        BTC/USDT 子进程执行入口
+        """
         while True:
             try:
                 ws = websocket.WebSocketApp(FUTURE_WS, on_open=self.on_open_binance_btcusdt_kline, on_message=self.on_message_binance_btcusdt_kline)
@@ -351,6 +375,9 @@ class GridStrategy(Process):
             except Exception as err:
                 logger.error("异常错误: {}".format(err))
     def getBinanceEthUsdtKlineWS(self):
+        """
+        ETH/USDT 子进程执行入口
+        """
         while True:
             try:
                 ws = websocket.WebSocketApp(FUTURE_WS, on_open=self.on_open_binance_ethusdt_kline, on_message=self.on_message_binance_ethusdt_kline)
@@ -358,6 +385,9 @@ class GridStrategy(Process):
             except Exception as err:
                 logger.error("异常错误: {}".format(err))
     def getBinanceEthBtcKlineWS(self):
+        """
+        ETH/BTC 子进程执行入口
+        """
         while True:
             try:
                 ws = websocket.WebSocketApp(SPOT_WS, on_open=self.on_open_binance_ethbtc_kline, on_message=self.on_message_binance_ethbtc_kline)
@@ -387,8 +417,10 @@ class GridStrategy(Process):
             logger.error("无法正常获取订单执行方法报错 {}, 对象数据: {}".format(err, orderId))
             return True
 
-    # 计算 ETH 收益
     def ETH_StatisticalIncome(self):
+        """
+        计算 ETH 收益
+        """
         ## ETH 当前价格
         eth_usdt_present_price = float(self.redisClient.getKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction)))
         ## ETH 最后下单价格
@@ -405,8 +437,10 @@ class GridStrategy(Process):
             eth_usdt_profi_loss = (eth_usdt_last_trade_price - eth_usdt_present_price) / eth_usdt_present_price * self.ratio * 100
         return eth_usdt_profi_loss
 
-    # BTC 计算收益
     def BTC_StatisticalIncome(self):
+        """
+        计算 BTC 收益
+        """
         ## BTC 当前价格
         btc_usdt_present_price = float(self.redisClient.getKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction)))
         ## BTC 最后下单价格
@@ -423,25 +457,28 @@ class GridStrategy(Process):
             btc_usdt_profi_loss = (btc_usdt_last_trade_price - btc_usdt_present_price) / btc_usdt_present_price * self.ratio * 100
         return btc_usdt_profi_loss
 
-    # 计算收益
     def BTC_and_ETH_StatisticalIncome(self):
         """
+        计算收益
         获取 BTC 和 ETH 的收益计算返回两个浮点数
         """
         return self.BTC_StatisticalIncome(), self.ETH_StatisticalIncome()
 
-    # 买卖 转换
     def TrendShift(self, buy_sell):
         """
+        买卖 转换
         用于买卖取反效果
+        Example: BUY == SELL
         """
         if buy_sell == "BUY":
             return 'SELL'
         elif buy_sell == "SELL":
             return 'BUY'
 
-    # BTC 清仓
     def BtcUsdtForcedLiquidation(self, trade):
+        """
+        BTC 清仓
+        """
         try:
             ## 获取 BTC 方向
             BUY_SELL = self.redisClient.getKey("{}_btc_order_direction_{}".format(self.token, self.direction)).split("|")[0]
@@ -484,8 +521,10 @@ class GridStrategy(Process):
         except Exception as err:
             logger.error('{} 清仓异常错误: {}'.format('BTCUSDT', err))
 
-    # ETH 清仓
     def EthUsdtForcedLiquidation(self, trade):
+        """
+        ETH 清仓
+        """
         try:
             ## 获取 ETH 方向
             BUY_SELL = self.redisClient.getKey("{}_eth_order_direction_{}".format(self.token, self.direction)).split("|")[0]
@@ -528,10 +567,13 @@ class GridStrategy(Process):
         except Exception as err:
             logger.error('{} 清仓异常错误: {}'.format('ETHUSDT', err))
         
-    # 判断趋势
     def LongShortTrend(self):
-        # 当 ETH/BTC 的值低于 `_long_short_trend_` 的值(default) 时配置
-        # 则表明, ETH 弱势需开多, BTC 强势需开空, 反之
+        """
+        判断趋势
+        当 ETH/BTC 的值低于 `_long_short_trend_` 的值(default) 时配置
+        则表明, ETH 弱势需开多, BTC 强势需开空, 反之
+        """
+
         while True:
             try:
                 if float(self.redisClient.getKey("{}_spot_eth@btc_present_price_{}".format(self.token, self.direction))) > float(self.redisClient.getKey("{}_long_short_trend_{}".format(self.token, self.direction))):
@@ -542,9 +584,12 @@ class GridStrategy(Process):
             except Exception as err:
                 logger.error('{} 判断趋势异常: {}'.format('ETHBTC', err))
 
-    # 判断下单方向
-    # BUY/SELL | LONG/SHORT
     def LongShortDirection(self, symbol):
+        """
+        判断下单方向
+        BUY/SELL | LONG/SHORT
+        """
+
         if symbol == "BTCUSDT":
             if int(self.redisClient.getKey("{}_long_short_direction_{}".format(self.token, self.direction))) == 1:
                 return 'BUY', 'LONG'
@@ -559,6 +604,7 @@ class GridStrategy(Process):
                 return 'BUY', 'LONG'
             else:
                 return 'SELL', 'SHORT'
+
     def initOpenSingleCurrencyContractTradingPair(self, symbol='ETH'):
         """
         初始化单币模式
@@ -567,6 +613,9 @@ class GridStrategy(Process):
             self.redisClient.setKey("{}_open_single_currency_contract_trading_pair_{}".format(self.token, self.direction), symbol)
 
     def run(self):
+        """
+        主进程执行入口
+        """
         # 获取一个 Binance API 对象
         trade = tradeAPI.TradeApi(self.key, self.secret)
         # 更改持仓方式，默认单向
