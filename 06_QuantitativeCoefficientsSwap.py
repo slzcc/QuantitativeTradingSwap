@@ -730,6 +730,8 @@ class GridStrategy(Process):
                                 self.redisClient.setKey("{}_last_order_time_{}".format(self.token, self.direction), time.time())
                                 # 关闭单币模式
                                 self.redisClient.setKey("{}_open_single_currency_contract_trading_pair_{}".format(self.token, self.direction), '')
+                        else:
+                            logger.info('持续监听, ETHUSDT 盈损比例 {}'.format(eth_usdt_profi_loss))
                 except Exception as err:
                     logger.error('{} 单币主逻辑异常错误: {}'.format('ETHBTC', err))
             else:
