@@ -467,7 +467,7 @@ class GridStrategy(Process):
                 # 计算当前 BTC USDT 数量
                 usdt_number = Decimal(btc_order_pool) * Decimal(float(self.redisClient.getKey("{}_futures_btc@usdt_last_trade_price_{}".format(self.token, self.direction))))
                 # 计算 gas 费用
-                now_gas = (usdt_number * Decimal(0.004)) + Decimal(all_order_gas)
+                now_gas = (usdt_number * Decimal(0.0004)) + Decimal(all_order_gas)
                 self.redisClient.setKey("{}_all_order_gas_{}".format(self.token, self.direction), float(now_gas))
 
                 # 清除下单价格
@@ -511,7 +511,7 @@ class GridStrategy(Process):
                 # 计算当前 ETC USDT 数量
                 usdt_number = Decimal(eth_order_pool) * Decimal(float(self.redisClient.getKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction))))
                 # 计算 gas 费用
-                now_gas = (usdt_number * Decimal(0.004)) + Decimal(all_order_gas)
+                now_gas = (usdt_number * Decimal(0.0004)) + Decimal(all_order_gas)
                 self.redisClient.setKey("{}_all_order_gas_{}".format(self.token, self.direction), float(now_gas))
 
                 # 清除下单价格
@@ -687,7 +687,7 @@ class GridStrategy(Process):
                             # 计算当前 ETC USDT 数量
                             usdt_number = Decimal(ethUsdtOrderQuantity) * Decimal(self.redisClient.getKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction)))
                             # 计算 gas 费用
-                            now_gas = (usdt_number * Decimal(0.004)) + all_order_gas
+                            now_gas = (usdt_number * Decimal(0.0004)) + all_order_gas
                             self.redisClient.setKey("{}_all_order_gas_{}".format(self.token, self.direction), float(now_gas))
                             # 记录下单时间
                             self.redisClient.setKey("{}_last_order_time_{}".format(self.token, self.direction), time.time())
@@ -749,7 +749,7 @@ class GridStrategy(Process):
                                 # 计算当前 BTC USDT 数量
                                 usdt_number = Decimal(self.min_qty) * Decimal(self.redisClient.getKey("{}_futures_btc@usdt_last_trade_price_{}".format(self.token, self.direction)))
                                 # 计算 gas 费用
-                                now_gas = (usdt_number * Decimal(0.004)) + all_order_gas
+                                now_gas = (usdt_number * Decimal(0.0004)) + all_order_gas
                                 self.redisClient.setKey("{}_all_order_gas_{}".format(self.token, self.direction), float(now_gas))
                                 # 记录下单时间
                                 self.redisClient.setKey("{}_last_order_time_{}".format(self.token, self.direction), time.time())
@@ -835,7 +835,7 @@ class GridStrategy(Process):
                                 # 计算当前 BTC USDT 数量
                                 usdt_number = Decimal(self.min_qty) * Decimal(self.redisClient.getKey("{}_futures_btc@usdt_last_trade_price_{}".format(self.token, self.direction)))
                                 # 计算 gas 费用
-                                now_gas = (usdt_number * Decimal(0.004)) + all_order_gas
+                                now_gas = (usdt_number * Decimal(0.0004)) + all_order_gas
                                 self.redisClient.setKey("{}_all_order_gas_{}".format(self.token, self.direction), float(now_gas))
 
                             ## 基于 BTC 开仓数量，计算出 ETH 需要的开仓数量
@@ -872,7 +872,7 @@ class GridStrategy(Process):
                                 # 计算当前 ETC USDT 数量
                                 usdt_number = Decimal(ethUsdtOrderQuantity) * Decimal(self.redisClient.getKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction)))
                                 # 计算 gas 费用
-                                now_gas = (usdt_number * Decimal(0.004)) + all_order_gas
+                                now_gas = (usdt_number * Decimal(0.0004)) + all_order_gas
                                 self.redisClient.setKey("{}_all_order_gas_{}".format(self.token, self.direction), float(now_gas))
 
                         # 记录下单时间
