@@ -170,7 +170,7 @@ class GridStrategy(Process):
         # 趋势默认值, 当前价格高于此值时 ETH 开空, BTC 开多
         # 峰值 0.074, 2023-03-16 压力值 0.066
         if not self.redisClient.getKey("{}_long_short_trend_{}".format(self.token, self.direction)):
-            self.redisClient.setKey("{}_long_short_trend_{}".format(self.token, self.direction), '0.066')
+            self.redisClient.setKey("{}_long_short_trend_{}".format(self.token, self.direction), '0.073')
 
         # ETH 下单方向
         # BUY/SELL | LONG/SHORT
@@ -268,7 +268,8 @@ class GridStrategy(Process):
         18、强制平仓: {0}_forced_liquidation_{1}
         
         # 趋势默认值, 当前价格高于此值时 ETH 开空, BTC 开多
-        # 峰值 0.074, 2023-04-28 压力值 0.065
+        # 峰值 0.076, 2023-04-28 压力值 0.073
+        # 因单币模式主开 ETH, 需要对系数要求很高
         19、系数值: {0}_long_short_trend_{1}
         20、ETH 下单方向(BUY/SELL | LONG/SHORT): {0}_eth_order_direction_{1}
         21、BTC 下单方向(BUY/SELL | LONG/SHORT): {0}_btc_order_direction_{1}
