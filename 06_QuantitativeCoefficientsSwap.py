@@ -635,6 +635,13 @@ class GridStrategy(Process):
                         # 记录下单时间
                         self.redisClient.setKey("{}_last_order_time_{}".format(self.token, self.direction), time.time())
                 else:
+
+                    # 如果订单中存在双币池, 且单币开关打开状态, 需要把单币开关进行关闭
+                    if open_single_currency_contract_trading_pair:
+                        # 关闭单币模式
+                        self.redisClient.setKey("{}_open_single_currency_contract_trading_pair_{}".format(self.token, self.direction), '')
+                        continue
+
                     # 如果非第一次下单则进入此规则
                     ## 获取 ETH 方向
                     ETH_BUY_SELL = self.redisClient.getKey("{}_eth_order_direction_{}".format(self.token, self.direction)).split("|")[0]
