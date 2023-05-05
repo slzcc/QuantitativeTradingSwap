@@ -213,24 +213,27 @@ class GridStrategy(Process):
         # 最小开仓购买币的数量 Example: 0.004/BTC
         if not self.redisClient.getKey("{}_account_assets_min_qty_{}".format(self.token, self.direction)):
             self.redisClient.setKey("{}_account_assets_min_qty_{}".format(self.token, self.direction), 0.004)
+        self.min_qty = float(self.redisClient.getKey("{}_account_assets_min_qty_{}".format(self.token, self.direction)))
 
         # 最大利润/止损, 使用时单位会 * 100, 作为 % 使用
         if not self.redisClient.getKey("{}_account_assets_profit_{}".format(self.token, self.direction)):
             self.redisClient.setKey("{}_account_assets_profit_{}".format(self.token, self.direction), 4)
+        self.profit = int(self.redisClient.getKey("{}_account_assets_profit_{}".format(self.token, self.direction)))
 
         # 最小利润/止损
         if not self.redisClient.getKey("{}_account_assets_min_profit_{}".format(self.token, self.direction)):
             self.redisClient.setKey("{}_account_assets_min_profit_{}".format(self.token, self.direction), 0.04)
+        self.min_profit = float(self.redisClient.getKey("{}_account_assets_min_profit_{}".format(self.token, self.direction)))
 
         # 开仓倍数(有BUG)
         if not self.redisClient.getKey("{}_account_assets_ratio_{}".format(self.token, self.direction)):
             self.redisClient.setKey("{}_account_assets_ratio_{}".format(self.token, self.direction), 10)
-        else:
-            self.ratio = int(self.redisClient.getKey("{}_account_assets_ratio_{}".format(self.token, self.direction)))
+        self.ratio = int(self.redisClient.getKey("{}_account_assets_ratio_{}".format(self.token, self.direction)))
 
         # 亏损
         if not self.redisClient.getKey("{}_account_assets_loss_{}".format(self.token, self.direction)):
             self.redisClient.setKey("{}_account_assets_loss_{}".format(self.token, self.direction), 0.05)
+        self.loss = float(self.redisClient.getKey("{}_account_assets_loss_{}".format(self.token, self.direction)))
 
         # help default
         # Key 说明
@@ -596,7 +599,7 @@ class GridStrategy(Process):
 
             # 初始化变量值
             self.min_qty = float(self.redisClient.getKey("{}_account_assets_min_qty_{}".format(self.token, self.direction)))
-            self.profit = float(self.redisClient.getKey("{}_account_assets_profit_{}".format(self.token, self.direction)))
+            self.profit = int(self.redisClient.getKey("{}_account_assets_profit_{}".format(self.token, self.direction)))
             self.min_profit = float(self.redisClient.getKey("{}_account_assets_min_profit_{}".format(self.token, self.direction)))
             self.loss = float(self.redisClient.getKey("{}_account_assets_loss_{}".format(self.token, self.direction)))
 
