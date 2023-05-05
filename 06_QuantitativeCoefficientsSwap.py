@@ -587,13 +587,13 @@ class GridStrategy(Process):
                 eth_usdt_order_pool = json.loads(self.redisClient.getKey("{}_futures_eth@usdt_order_pool_{}".format(self.token, self.direction)))
 
                 # 如果订单中存在双币池, 且单币开关打开状态, 需要把单币开关进行关闭
-                if open_single_currency_contract_trading_pair and len(btc_usdt_order_pool) != 0 and len(eth_usdt_order_pool) != 0:
+                if len(btc_usdt_order_pool) != 0 and len(eth_usdt_order_pool) != 0:
                     # 关闭单币模式
                     self.redisClient.setKey("{}_open_single_currency_contract_trading_pair_{}".format(self.token, self.direction), '')
                     continue
 
                 # 如果没有被下单则进行第一次下单
-                if len(btc_usdt_order_pool) == 0 and len(eth_usdt_order_pool) == 0:
+                elif len(btc_usdt_order_pool) == 0 and len(eth_usdt_order_pool) == 0:
                     time.sleep(5)
                     # 停止下单
                     if self.redisClient.getKey("{}_order_pause_{}".format(self.token, self.direction)) == 'true':
