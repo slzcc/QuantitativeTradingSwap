@@ -289,7 +289,7 @@ class GridStrategy(Process):
         26、记录是否开启单币持仓模式 (ETH/BTC): {0}_open_single_currency_contract_trading_pair_{1}
         
         27、最小开仓购买币的数量 Example: 0.004/BTC: {0}_account_assets_min_qty_{1}
-        28、最大利润/止损, 使用时单位会 * 100, 作为 % 使用: {0}_account_assets_min_qty_{1}
+        28、最大利润/止损, 使用时单位会 * 100, 作为 % 使用: {0}_account_assets_profit_{1}
         29、最小利润/止损 ---: {0}_account_assets_min_profit_{1}
         30、开仓倍数(有BUG): {0}_account_assets_ratio_{1}
         31、允许的亏损比例: {0}_account_assets_loss_{1}
