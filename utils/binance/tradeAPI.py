@@ -66,12 +66,12 @@ class TradeApi:
         header = {"X-MBX-APIKEY": self.api}
         return PublicModels.PublicRequests(request={"model": "GET", "url": url, "header": header, "timeout": 5, "verify": True, "proxies": PROXIES_DEFAULT_DATA}, recursive_abnormal={"recursive": 10, "count": 0, "alert_count": 10})
 
-        try:
-            position_list = list(filter(lambda x: x['initialMargin'] != '0', res['positions']))
-            return res['totalWalletBalance'], res['availableBalance'], position_list
-        except:
-            print(res)
-            return '','', []
+        # try:
+        #     position_list = list(filter(lambda x: x['initialMargin'] != '0', res['positions']))
+        #     return res['totalWalletBalance'], res['availableBalance'], position_list
+        # except:
+        #     print(res)
+        #     return '','', []
 
     def get_income(self, timestamp=None):
         '''账户损益资金流水'''

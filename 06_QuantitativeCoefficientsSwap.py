@@ -608,6 +608,31 @@ class GridStrategy(Process):
             if open_single_currency_contract_trading_pair:
                 try:
                     time.sleep(0.3)
+                    # 强制平仓
+                    if self.redisClient.getKey("{}_forced_liquidation_{}".format(self.token, self.direction)) == 'true':
+                        logger.info('{} 强制平仓'.format('ETHUSDT'))
+
+                        ## ETH/USDT 清仓
+                        g2 = Process(target=self.EthUsdtForcedLiquidation, args=(trade,))
+                        g2.start()
+
+                        # 恢复强制平仓配置
+                        self.redisClient.setKey("{}_forced_liquidation_{}".format(self.token, self.direction), 'false')
+
+                        # 计算收益
+                        eth_usdt_profi_loss = self.ETH_StatisticalIncome()
+                        all_order_profit = Decimal(self.redisClient.getKey("{}_all_order_profit_{}".format(self.token, self.direction)))
+                        now_profit = Decimal(eth_usdt_profi_loss) + all_order_profit
+                        self.redisClient.setKey("{}_all_order_profit_{}".format(self.token, self.direction), float(now_profit))
+
+                        time.sleep(5)
+                        continue
+
+                    # 手动模式
+                    if self.redisClient.getKey("{}_manual_mode_{}".format(self.token, self.direction)) == 'true':
+                        logger.info('{} 开启手动模式'.format('ETHBTC'))
+                        time.sleep(5)
+                        continue
 
                     # 判断下单池是否为空
                     btc_usdt_order_pool = json.loads(self.redisClient.getKey("{}_futures_btc@usdt_order_pool_{}".format(self.token, self.direction)))
