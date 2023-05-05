@@ -212,59 +212,58 @@ class GridStrategy(Process):
             self.redisClient.setKey("{}_last_order_time_{}".format(self.token, self.direction), 0)
         # help default
         # Key 说明
-        if not self.redisClient.getKey("{}_help_{}".format(self.token, self.direction)):
-            _help_text = """
-            # BTC
-            01、获取最新价格 btc/usdt: {0}_futures_btc@usdt_present_price_{1} 
-            02、获取下单价格 btc/usdt: {0}_futures_btc@usdt_last_trade_price_{1} 
-            03、获取下单池 btc/usdt (下单数量): {0}_futures_btc@usdt_order_pool_{1}
+        _help_text = """
+        # BTC
+        01、获取最新价格 btc/usdt: {0}_futures_btc@usdt_present_price_{1} 
+        02、获取下单价格 btc/usdt: {0}_futures_btc@usdt_last_trade_price_{1} 
+        03、获取下单池 btc/usdt (下单数量): {0}_futures_btc@usdt_order_pool_{1}
 
-            # ETH
-            04、获取最新价格 eth/usdt: {0}_futures_eth@usdt_present_price_{1}
-            05、获取下单价格 eth/usdt: {0}_futures_eth@usdt_last_trade_price_{1}
-            06、获取下单池 eth/usdt (下单数量): {0}_futures_eth@usdt_order_pool_{1}
+        # ETH
+        04、获取最新价格 eth/usdt: {0}_futures_eth@usdt_present_price_{1}
+        05、获取下单价格 eth/usdt: {0}_futures_eth@usdt_last_trade_price_{1}
+        06、获取下单池 eth/usdt (下单数量): {0}_futures_eth@usdt_order_pool_{1}
 
-            # ETH/BTC
-            07、获取最新价格 eth/btc: {0}_spot_eth@btc_present_price_{1}
-            08、获取下单价格 eth/btc: {0}_spot_eth@btc_last_trade_price_{1}
-            09、获取下单池 eth/btc: {0}_spot_eth@btc_order_pool_{1}
+        # ETH/BTC
+        07、获取最新价格 eth/btc: {0}_spot_eth@btc_present_price_{1}
+        08、获取下单价格 eth/btc: {0}_spot_eth@btc_last_trade_price_{1}
+        09、获取下单池 eth/btc: {0}_spot_eth@btc_order_pool_{1}
 
-            # 获取订单池 btc/usdt (订单号): 
-            10、购买池: {0}_futures_btc@usdt_buy_order_number_pool_{1}
-            11、出售池: {0}_futures_btc@usdt_sell_order_number_pool_{1}
+        # 获取订单池 btc/usdt (订单号): 
+        10、购买池: {0}_futures_btc@usdt_buy_order_number_pool_{1}
+        11、出售池: {0}_futures_btc@usdt_sell_order_number_pool_{1}
 
-            # 获取订单池 eth/usdt (订单号)
-            12、购买池: {0}_futures_eth@usdt_buy_order_number_pool_{1}
-            13、出售池: {0}_futures_eth@usdt_sell_order_number_pool_{1}
-            
-            14、停止下单: {0}_order_pause_{1}
-            15、手续费(U): {0}_all_order_gas_{1}
-            16、利润(U): {0}_all_order_profit_{1}
-            17、亏损(U): {0}_all_order_loss_{1}
-            18、强制平仓: {0}_forced_liquidation_{1}
-            
-            # 趋势默认值, 当前价格高于此值时 ETH 开空, BTC 开多
-            # 峰值 0.074, 2023-04-28 压力值 0.065
-            19、系数值: {0}_long_short_trend_{1}
-            20、ETH 下单方向(BUY/SELL | LONG/SHORT): {0}_eth_order_direction_{1}
-            21、BTC 下单方向(BUY/SELL | LONG/SHORT): {0}_btc_order_direction_{1}
-            
-            # 默认 false， 当等于 true 时, 则不会自动平单
-            # 如果手动进行凭单请清空 redis 数据重启服务! 切记
-            22、手动模式: _manual_mode_{1}
-            
-            # 多空方向, 由 {0}_long_short_trend_{1} key 判定得出, 默认为 1, 即: ETH 开空, BTC 开多
-            # 值 0/1
-            # 1(default): ETH 开空, BTC 开多
-            # 0 : ETH 开多, BTC 开空
-            23、多空方向: {0}_long_short_direction_{1}
-            
-            24、记录当前运行时间: {0}_t_start_{1}
-            25、记录上一次下单时间: {0}_last_order_time_{1}
-            
-            26、记录是否开启单币持仓模式 (ETH/BTC): {0}_open_single_currency_contract_trading_pair_{1}
-            """.format(self.token, self.direction)
-            self.redisClient.setKey("{}_help_{}".format(self.token, self.direction), _help_text)
+        # 获取订单池 eth/usdt (订单号)
+        12、购买池: {0}_futures_eth@usdt_buy_order_number_pool_{1}
+        13、出售池: {0}_futures_eth@usdt_sell_order_number_pool_{1}
+        
+        14、停止下单: {0}_order_pause_{1}
+        15、手续费(U): {0}_all_order_gas_{1}
+        16、利润(U): {0}_all_order_profit_{1}
+        17、亏损(U): {0}_all_order_loss_{1}
+        18、强制平仓: {0}_forced_liquidation_{1}
+        
+        # 趋势默认值, 当前价格高于此值时 ETH 开空, BTC 开多
+        # 峰值 0.074, 2023-04-28 压力值 0.065
+        19、系数值: {0}_long_short_trend_{1}
+        20、ETH 下单方向(BUY/SELL | LONG/SHORT): {0}_eth_order_direction_{1}
+        21、BTC 下单方向(BUY/SELL | LONG/SHORT): {0}_btc_order_direction_{1}
+        
+        # 默认 false， 当等于 true 时, 则不会自动平单
+        # 如果手动进行凭单请清空 redis 数据重启服务! 切记
+        22、手动模式: _manual_mode_{1}
+        
+        # 多空方向, 由 {0}_long_short_trend_{1} key 判定得出, 默认为 1, 即: ETH 开空, BTC 开多
+        # 值 0/1
+        # 1(default): ETH 开空, BTC 开多
+        # 0 : ETH 开多, BTC 开空
+        23、多空方向: {0}_long_short_direction_{1}
+        
+        24、记录当前运行时间: {0}_t_start_{1}
+        25、记录上一次下单时间: {0}_last_order_time_{1}
+        
+        26、记录是否开启单币持仓模式 (ETH/BTC): {0}_open_single_currency_contract_trading_pair_{1}
+        """.format(self.token, self.direction)
+        self.redisClient.setKey("{}_help_{}".format(self.token, self.direction), _help_text)
 
         # 如果日志目录不存在进行创建
         if not os.path.exists('logs'):
@@ -587,6 +586,12 @@ class GridStrategy(Process):
                 btc_usdt_order_pool = json.loads(self.redisClient.getKey("{}_futures_btc@usdt_order_pool_{}".format(self.token, self.direction)))
                 eth_usdt_order_pool = json.loads(self.redisClient.getKey("{}_futures_eth@usdt_order_pool_{}".format(self.token, self.direction)))
 
+                # 如果订单中存在双币池, 且单币开关打开状态, 需要把单币开关进行关闭
+                if open_single_currency_contract_trading_pair and len(btc_usdt_order_pool) != 0 and len(eth_usdt_order_pool) != 0:
+                    # 关闭单币模式
+                    self.redisClient.setKey("{}_open_single_currency_contract_trading_pair_{}".format(self.token, self.direction), '')
+                    continue
+
                 # 如果没有被下单则进行第一次下单
                 if len(btc_usdt_order_pool) == 0 and len(eth_usdt_order_pool) == 0:
                     time.sleep(5)
@@ -635,13 +640,6 @@ class GridStrategy(Process):
                         # 记录下单时间
                         self.redisClient.setKey("{}_last_order_time_{}".format(self.token, self.direction), time.time())
                 else:
-
-                    # 如果订单中存在双币池, 且单币开关打开状态, 需要把单币开关进行关闭
-                    if open_single_currency_contract_trading_pair:
-                        # 关闭单币模式
-                        self.redisClient.setKey("{}_open_single_currency_contract_trading_pair_{}".format(self.token, self.direction), '')
-                        continue
-
                     # 如果非第一次下单则进入此规则
                     ## 获取 ETH 方向
                     ETH_BUY_SELL = self.redisClient.getKey("{}_eth_order_direction_{}".format(self.token, self.direction)).split("|")[0]
