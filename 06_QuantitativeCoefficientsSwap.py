@@ -674,7 +674,7 @@ class GridStrategy(Process):
 
                         # 计算收益
                         eth_usdt_profi_loss = self.ETH_StatisticalIncome()
-                        logger.info('ETHUSDT 方向: {}/{} 最新价格: {}'.format(ETH_BUY_SELL, ETH_LONG_SHORT, float(self.redisClient.getKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction)))))
+                        logger.info('ETHUSDT 方向: {}/{}, 最新价格: {}, 系数: {}'.format(ETH_BUY_SELL, ETH_LONG_SHORT, float(self.redisClient.getKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction))), float(self.redisClient.getKey("{}_spot_eth@btc_present_price_{}".format(self.token, self.direction)))))
 
                         # 判断收益
                         if (eth_usdt_profi_loss) >= (self.profit * 3):
