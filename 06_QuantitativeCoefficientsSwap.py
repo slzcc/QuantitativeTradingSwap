@@ -677,7 +677,7 @@ class GridStrategy(Process):
                         logger.info('ETHUSDT 方向: {}/{} 最新价格: {}'.format(ETH_BUY_SELL, ETH_LONG_SHORT, float(self.redisClient.getKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction)))))
 
                         # 判断收益
-                        if (eth_usdt_profi_loss) >= self.profit:
+                        if (eth_usdt_profi_loss) >= (self.profit * 3):
                             logger.info('准备清仓, 当前 ETHUSDT 盈损比例 {}, 合计 {}'.format(eth_usdt_profi_loss, eth_usdt_profi_loss))
                             ## ETH/USDT 清仓
                             g2 = Process(target=self.EthUsdtForcedLiquidation, args=(trade,))
@@ -732,6 +732,7 @@ class GridStrategy(Process):
                                 self.redisClient.setKey("{}_open_single_currency_contract_trading_pair_{}".format(self.token, self.direction), '')
                         else:
                             logger.info('持续监听, ETHUSDT 盈损比例 {}, 下单价格: {}'.format(eth_usdt_profi_loss, float(self.redisClient.getKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction)))))
+
                 except Exception as err:
                     logger.error('{} 单币主逻辑异常错误: {}'.format('ETHBTC', err))
             else:
