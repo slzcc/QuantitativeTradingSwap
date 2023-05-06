@@ -664,10 +664,12 @@ class GridStrategy(Process):
         p4.start()
 
         while True:
+            time.sleep(0.3)
 
             # 当进入平仓模式阻止建仓
             if int(self.redisClient.getKey("{}_futures_eth@usdt_order_pause_{}".format(self.token, self.direction))) == 1 or \
                int(self.redisClient.getKey("{}_futures_btc@usdt_order_pause_{}".format(self.token, self.direction))) == 1:
+                logger.info("进入暂停建仓模式..")
                 time.sleep(1)
                 continue
 
