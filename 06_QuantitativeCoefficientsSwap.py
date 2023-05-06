@@ -472,17 +472,19 @@ class GridStrategy(Process):
                 for item in account_assets_list:
                     if item["asset"] == asset:
                         # 获取百分比资产
-                        account_assets = Decimal(item["balance"] * ratio) * Decimal(self.account_assets_total_percentage_qty / 100)
+                        account_assets = Decimal(item["balance"]) * Decimal(self.account_assets_total_percentage_qty / 100)
                         # usdt 转换 币 真实数量，并做四舍五入
                         qty_number = round(account_assets / Decimal(self.redisClient.getKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction))), 3)
                         # 需大于 btc 最小下单价格: 0.001
                         if qty_number < Decimal('0.001'):
                             return float(self.redisClient.getKey("{}_account_assets_min_qty_{}".format(self.token, self.direction)))
                         # 判断是否大于 可用资产
-                        if (qty_number * Decimal(self.redisClient.getKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction)))) > Decimal(item['availableBalance'] * ratio):
+                        qty_number_assets = qty_number * Decimal(self.redisClient.getKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction)))
+                        available_assets = Decimal(item['availableBalance'])
+                        if qty_number_assets > available_assets:
                             return float(qty_number)
                         else:
-                            logger.error("初始化委托价格不能满足使用百分比总仓位, 因超出可用资产金额! 委托价格({}) < 可用资产({})".format((qty_number * Decimal(self.redisClient.getKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction)))), float(item['availableBalance'])))
+                            logger.error("初始化委托价格不能满足使用百分比总仓位, 因超出可用资产金额! 委托价格({}) < 可用资产({})".format(float(qty_number_assets), float(available_assets)))
                             return float(self.redisClient.getKey("{}_account_assets_min_qty_{}".format(self.token, self.direction)))
                 return float(self.redisClient.getKey("{}_account_assets_min_qty_{}".format(self.token, self.direction)))
             else:
