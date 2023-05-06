@@ -147,7 +147,15 @@ class GridStrategy(Process):
         if not self.redisClient.getKey("{}_spot_eth@btc_order_pool_{}".format(self.token, self.direction)):
             self.redisClient.setKey("{}_spot_eth@btc_order_pool_{}".format(self.token, self.direction), '[]')
 
-        # 停止下单
+        # 停止下单 eth/usdt
+        if not self.redisClient.getKey("{}_futures_eth@usdt_order_pause_{}".format(self.token, self.direction)):
+            self.redisClient.setKey("{}_futures_eth@usdt_order_pause_{}".format(self.token, self.direction), 0)
+
+        # 停止下单 btc/usdt
+        if not self.redisClient.getKey("{}_futures_btc@usdt_order_pause_{}".format(self.token, self.direction)):
+            self.redisClient.setKey("{}_futures_btc@usdt_order_pause_{}".format(self.token, self.direction), 0)
+
+        # 停止下单（停止总下单）
         if not self.redisClient.getKey("{}_order_pause_{}".format(self.token, self.direction)):
             self.redisClient.setKey("{}_order_pause_{}".format(self.token, self.direction), 'false')
 
@@ -230,7 +238,7 @@ class GridStrategy(Process):
             self.redisClient.setKey("{}_account_assets_ratio_{}".format(self.token, self.direction), 10)
         self.ratio = int(self.redisClient.getKey("{}_account_assets_ratio_{}".format(self.token, self.direction)))
 
-        # 亏损
+        # 亏损(容忍比例)
         if not self.redisClient.getKey("{}_account_assets_loss_{}".format(self.token, self.direction)):
             self.redisClient.setKey("{}_account_assets_loss_{}".format(self.token, self.direction), 0.05)
         self.loss = float(self.redisClient.getKey("{}_account_assets_loss_{}".format(self.token, self.direction)))
@@ -294,6 +302,12 @@ class GridStrategy(Process):
         29、最小利润/止损 ---: {0}_account_assets_min_profit_{1}
         30、开仓倍数(有BUG): {0}_account_assets_ratio_{1}
         31、允许的亏损比例: {0}_account_assets_loss_{1}
+        
+        # 当进入清仓模式进行阻塞, 因清仓是异步执行(未实现)
+        # 0 是可以下单
+        # 1 是不可下单
+        32、停止下单 ETH/USDT: {0}_futures_eth@usdt_order_pause_{1}
+        32、停止下单 BTC/USDT: {0}_futures_btc@usdt_order_pause_{1}
         """.format(self.token, self.direction)
         self.redisClient.setKey("{}_help_{}".format(self.token, self.direction), _help_text)
 
@@ -945,7 +959,7 @@ class GridStrategy(Process):
 
                         # 计算收益
                         btc_usdt_profi_loss, eth_usdt_profi_loss = self.BTC_and_ETH_StatisticalIncome()
-                        logger.info('当前 BTCUSDT 方向: {}/{}, ETHUSDT 方向: {}/{}'.format(BTC_BUY_SELL, BTC_LONG_SHORT, ETH_BUY_SELL, ETH_LONG_SHORT))
+                        logger.info('当前 BTCUSDT 方向: {}/{} 最新价格: {}, ETHUSDT 方向: {}/{} 最新价格: {}'.format(BTC_BUY_SELL, BTC_LONG_SHORT, self.redisClient.getKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction)), ETH_BUY_SELL, ETH_LONG_SHORT, self.redisClient.getKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction))))
 
                         if (btc_usdt_profi_loss + eth_usdt_profi_loss) >= self.profit:
                             logger.info('准备清仓, 当前 BTCUSDT 盈损比例 {}, ETHUSDT 盈损比例 {}, 合计 {}'.format(btc_usdt_profi_loss, eth_usdt_profi_loss, btc_usdt_profi_loss + eth_usdt_profi_loss))
@@ -963,7 +977,7 @@ class GridStrategy(Process):
                             self.redisClient.setKey("{}_all_order_profit_{}".format(self.token, self.direction), float(now_profit))
 
                         else:
-                            logger.info('持续监听, 当前 BTCUSDT 盈损比例 {}, ETHUSDT 盈损比例 {}, 合计 {}'.format(btc_usdt_profi_loss, eth_usdt_profi_loss, btc_usdt_profi_loss + eth_usdt_profi_loss))
+                            logger.info('持续监听, 当前 BTCUSDT 仓位价格: {} 盈损比例 {:.2f}, ETHUSDT 仓位价格: {} 盈损比例 {:.2f}, 合计 {:.2f}'.format(self.redisClient.getKey("{}_futures_btc@usdt_last_trade_price_{}".format(self.token, self.direction)), btc_usdt_profi_loss, self.redisClient.getKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction)), eth_usdt_profi_loss, (btc_usdt_profi_loss + eth_usdt_profi_loss)))
                 except Exception as err:
                     logger.error('{} 双币主逻辑异常错误: {}'.format('ETHBTC', err))
 
