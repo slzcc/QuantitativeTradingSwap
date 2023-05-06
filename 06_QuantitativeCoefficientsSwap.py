@@ -609,8 +609,8 @@ class GridStrategy(Process):
         """
         初始化单币模式
         """
-        if not self.redisClient.getKey("{}_open_single_currency_contract_trading_pair_{}".format(self.token, self.direction)):
-            self.redisClient.setKey("{}_open_single_currency_contract_trading_pair_{}".format(self.token, self.direction), symbol)
+        # if not self.redisClient.getKey("{}_open_single_currency_contract_trading_pair_{}".format(self.token, self.direction)):
+        self.redisClient.setKey("{}_open_single_currency_contract_trading_pair_{}".format(self.token, self.direction), symbol)
 
     def run(self):
         """
@@ -696,7 +696,7 @@ class GridStrategy(Process):
 
                     # 如果没有被下单则进行第一次下单
                     elif len(btc_usdt_order_pool) == 0 and len(eth_usdt_order_pool) == 0:
-                        time.sleep(5)
+                        time.sleep(11)
                         # 停止下单
                         if self.redisClient.getKey("{}_order_pause_{}".format(self.token, self.direction)) == 'true':
                             logger.info('{} 停止下单状态'.format('BTCUSDT and ETHUSDT'))
@@ -849,7 +849,7 @@ class GridStrategy(Process):
 
                     # 如果没有被下单则进行第一次下单
                     if len(btc_usdt_order_pool) == 0 and len(eth_usdt_order_pool) == 0:
-                        time.sleep(5)
+                        time.sleep(11)
                         # 停止下单
                         if self.redisClient.getKey("{}_order_pause_{}".format(self.token, self.direction)) == 'true':
                             logger.info('{} 停止下单状态'.format('BTCUSDT and ETHUSDT'))
