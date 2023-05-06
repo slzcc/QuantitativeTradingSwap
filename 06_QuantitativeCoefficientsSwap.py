@@ -645,6 +645,7 @@ class GridStrategy(Process):
         # 变换逐全仓, 默认逐仓
         trade.change_margintype(self.symbol, isolated=False).json()
         # 调整开仓杠杆
+        self.ratio = int(self.redisClient.getKey("{}_account_assets_ratio_{}".format(self.token, self.direction)))
         trade.set_leverage(self.symbol, self.ratio).json()
         # 设置当前启动时间
         self.redisClient.setKey("{}_t_start_{}".format(self.token, self.direction), time.time())
