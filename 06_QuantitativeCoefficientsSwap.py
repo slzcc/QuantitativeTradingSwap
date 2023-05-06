@@ -208,7 +208,6 @@ class GridStrategy(Process):
         # 默认 ETH
         if not self.redisClient.getKey("{}_open_single_currency_contract_trading_pair_{}".format(self.token, self.direction)):
             self.redisClient.setKey("{}_open_single_currency_contract_trading_pair_{}".format(self.token, self.direction), 'ETH')
-        self.open_single_currency_contract_trading_pair = self.redisClient.getKey("{}_open_single_currency_contract_trading_pair_{}".format(self.token, self.direction))
 
         # timestamp default
         # 记录当前运行时间
@@ -645,7 +644,6 @@ class GridStrategy(Process):
         # 变换逐全仓, 默认逐仓
         trade.change_margintype(self.symbol, isolated=False).json()
         # 调整开仓杠杆
-        self.ratio = int(self.redisClient.getKey("{}_account_assets_ratio_{}".format(self.token, self.direction)))
         trade.set_leverage(self.symbol, self.ratio).json()
         # 设置当前启动时间
         self.redisClient.setKey("{}_t_start_{}".format(self.token, self.direction), time.time())
@@ -668,8 +666,7 @@ class GridStrategy(Process):
             time.sleep(0.3)
 
             # 当进入平仓模式阻止建仓
-            if int(self.redisClient.getKey("{}_futures_eth@usdt_order_pause_{}".format(self.token, self.direction))) == 1 or \
-               int(self.redisClient.getKey("{}_futures_btc@usdt_order_pause_{}".format(self.token, self.direction))) == 1:
+            if int(self.redisClient.getKey("{}_futures_eth@usdt_order_pause_{}".format(self.token, self.direction))) == 1 or int(self.redisClient.getKey("{}_futures_btc@usdt_order_pause_{}".format(self.token, self.direction))) == 1:
                 logger.info("进入暂停建仓模式..")
                 time.sleep(1)
                 continue
@@ -679,6 +676,7 @@ class GridStrategy(Process):
             self.profit = int(self.redisClient.getKey("{}_account_assets_profit_{}".format(self.token, self.direction)))
             self.min_profit = float(self.redisClient.getKey("{}_account_assets_min_profit_{}".format(self.token, self.direction)))
             self.loss = float(self.redisClient.getKey("{}_account_assets_loss_{}".format(self.token, self.direction)))
+            self.open_single_currency_contract_trading_pair = self.redisClient.getKey("{}_open_single_currency_contract_trading_pair_{}".format(self.token, self.direction))
 
             # 判断当前是否开启单币仓位模式
             if self.open_single_currency_contract_trading_pair:
