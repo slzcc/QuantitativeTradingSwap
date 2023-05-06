@@ -221,7 +221,14 @@ class GridStrategy(Process):
         # 最小开仓购买币的数量 Example: 0.004/BTC
         if not self.redisClient.getKey("{}_account_assets_min_qty_{}".format(self.token, self.direction)):
             self.redisClient.setKey("{}_account_assets_min_qty_{}".format(self.token, self.direction), 0.004)
-        self.min_qty = float(self.redisClient.getKey("{}_account_assets_min_qty_{}".format(self.token, self.direction)))
+
+        # 总资产百分比 0 ~ 100
+        # 当它为 0 时默认不开启
+        # 当它其他是 1 ~ 100 任意数值时, 获取总资产百分比进行下单
+        # 它启用后, 会覆盖 min_qty
+        if not self.redisClient.getKey("{}_account_assets_total_percentage_qty_{}".format(self.token, self.direction)):
+            self.redisClient.setKey("{}_account_assets_total_percentage_qty_{}".format(self.token, self.direction), 20)
+        self.account_assets_total_percentage_qty = self.redisClient.getKey("{}_account_assets_total_percentage_qty_{}".format(self.token, self.direction))
 
         # 最大利润/止损, 使用时单位会 * 100, 作为 % 使用
         if not self.redisClient.getKey("{}_account_assets_profit_{}".format(self.token, self.direction)):
@@ -307,7 +314,13 @@ class GridStrategy(Process):
         # 0 是可以下单
         # 1 是不可下单
         32、停止下单 ETH/USDT: {0}_futures_eth@usdt_order_pause_{1}
-        32、停止下单 BTC/USDT: {0}_futures_btc@usdt_order_pause_{1}
+        33、停止下单 BTC/USDT: {0}_futures_btc@usdt_order_pause_{1}
+        
+        # 总资产百分比 0 ~ 100
+        # 当它为 0 时默认不开启
+        # 当它其他是 1 ~ 100 任意数值时, 获取总资产百分比进行下单
+        # 它启用后, 会覆盖 min_qty
+        34、使用总资产百分比作为委托价格: {0}_account_assets_total_percentage_qty_{1}
         """.format(self.token, self.direction)
         self.redisClient.setKey("{}_help_{}".format(self.token, self.direction), _help_text)
 
@@ -430,6 +443,52 @@ class GridStrategy(Process):
         except Exception as err:
             logger.error("无法正常获取订单执行方法报错 {}, 对象数据: {}".format(err, orderId))
             return True
+
+    def initializeOrderPrice(self, trade, asset='USDT', ratio=1):
+        """
+        初始化默认委托价格
+        1、值 小于 3 时默认使用 _account_assets_min_qty_ 作为委托价格
+        2、值 大于/等于 3 或获取账户总合约资产的百分比(USDT), 计算委托价格
+        3、超过 100 默认使用 _account_assets_min_qty_ 作为委托价格
+
+        当总资产计算得出不能满足 开仓 0.001/BTC 会向上补全 0.001/BTC 最小下单价格
+        {'accountAlias': 'FzXqoCfWfWXqsRTi',
+          'asset': 'USDT',
+          'balance': '166.76892433',
+          'crossWalletBalance': '166.76892433',
+          'crossUnPnl': '-0.22548459',
+          'availableBalance': '143.02746490',
+          'maxWithdrawAmount': '143.02746490',
+          'marginAvailable': True,
+          'updateTime': 1683351333603}
+        """
+        self.account_assets_total_percentage_qty = int(self.redisClient.getKey("{}_account_assets_total_percentage_qty_{}".format(self.token, self.direction)))
+        # 当此值为 0 使用 _account_assets_min_qty_ 参数为默认委托价格
+        try:
+            if self.account_assets_total_percentage_qty < 3:
+                return float(self.redisClient.getKey("{}_account_assets_min_qty_{}".format(self.token, self.direction)))
+            elif self.account_assets_total_percentage_qty >= 3 and self.account_assets_total_percentage_qty < 100:
+                account_assets_list = trade.get_balance().json()
+                for item in account_assets_list:
+                    if item["asset"] == asset:
+                        # 获取百分比资产
+                        account_assets = Decimal(item["balance"] * ratio) * Decimal(self.account_assets_total_percentage_qty / 100)
+                        # usdt 转换 币 真实数量，并做四舍五入
+                        qty_number = round(account_assets / Decimal(self.redisClient.getKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction))), 3)
+                        # 需大于 btc 最小下单价格: 0.001
+                        if qty_number < Decimal('0.001'):
+                            return float(self.redisClient.getKey("{}_account_assets_min_qty_{}".format(self.token, self.direction)))
+                        # 判断是否大于 可用资产
+                        if (qty_number * Decimal(self.redisClient.getKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction)))) > Decimal(item['availableBalance'] * ratio):
+                            return float(qty_number)
+                        else:
+                            logger.error("初始化委托价格不能满足使用百分比总仓位, 因超出可用资产金额! 委托价格({}) < 可用资产({})".format((qty_number * Decimal(self.redisClient.getKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction)))), float(item['availableBalance'])))
+                            return float(self.redisClient.getKey("{}_account_assets_min_qty_{}".format(self.token, self.direction)))
+                return float(self.redisClient.getKey("{}_account_assets_min_qty_{}".format(self.token, self.direction)))
+            else:
+                return float(self.redisClient.getKey("{}_account_assets_min_qty_{}".format(self.token, self.direction)))
+        except:
+            return float(self.redisClient.getKey("{}_account_assets_min_qty_{}".format(self.token, self.direction)))
 
     def ETH_StatisticalIncome(self):
         """
@@ -672,7 +731,6 @@ class GridStrategy(Process):
                 continue
 
             # 初始化变量值
-            self.min_qty = float(self.redisClient.getKey("{}_account_assets_min_qty_{}".format(self.token, self.direction)))
             self.profit = int(self.redisClient.getKey("{}_account_assets_profit_{}".format(self.token, self.direction)))
             self.min_profit = float(self.redisClient.getKey("{}_account_assets_min_profit_{}".format(self.token, self.direction)))
             self.loss = float(self.redisClient.getKey("{}_account_assets_loss_{}".format(self.token, self.direction)))
@@ -729,6 +787,8 @@ class GridStrategy(Process):
                             logger.info('{} 停止下单状态'.format('BTCUSDT and ETHUSDT'))
                             time.sleep(5)
                             continue
+                        # 获取最新委托价格值
+                        self.min_qty = self.initializeOrderPrice(trade=trade, asset='USDT', ratio=self.ratio)
 
                         ## 基于 BTC 开仓数量，计算出 ETH 需要的开仓数量
                         ## ETH/USDT 开单(最小下单量 0.004)
@@ -798,6 +858,9 @@ class GridStrategy(Process):
                             当前收益 <= 容忍损失
                             进行对冲开单
                             """
+                            # 获取最新委托价格值
+                            self.min_qty = self.initializeOrderPrice(trade=trade, asset='USDT', ratio=self.ratio)
+
                             ## 获取 BTC 方向
                             BUY_SELL = 'SELL' if ETH_BUY_SELL == 'BUY' else 'BUY'
                             LONG_SHORT = 'SHORT' if ETH_LONG_SHORT == 'LONG' else 'LONG'
@@ -884,6 +947,9 @@ class GridStrategy(Process):
                     # 如果没有被下单则进行第一次下单
                     if len(btc_usdt_order_pool) == 0 and len(eth_usdt_order_pool) == 0:
                         time.sleep(5)
+                        # 获取最新委托价格值
+                        self.min_qty = self.initializeOrderPrice(trade=trade, asset='USDT', ratio=self.ratio)
+
                         # 停止下单
                         if self.redisClient.getKey("{}_order_pause_{}".format(self.token, self.direction)) == 'true':
                             logger.info('{} 停止下单状态'.format('BTCUSDT and ETHUSDT'))
