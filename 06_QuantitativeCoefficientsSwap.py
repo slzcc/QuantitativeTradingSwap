@@ -310,7 +310,7 @@ class GridStrategy(Process):
         30、开仓倍数(有BUG): {0}_account_assets_ratio_{1}
         31、允许的亏损比例: {0}_account_assets_loss_{1}
         
-        # 当进入清仓模式进行阻塞, 因清仓是异步执行(未实现)
+        # 当进入清仓模式进行阻塞, 因清仓是异步执行
         # 0 是可以下单
         # 1 是不可下单
         32、停止下单 ETH/USDT: {0}_futures_eth@usdt_order_pause_{1}
@@ -996,7 +996,10 @@ class GridStrategy(Process):
                             ethUsdtOrderQuantity = float('%.3f' % _ethUsdtOrderQuantity)
 
                             ## 获取 ETH 方向
-                            BUY_SELL, LONG_SHORT = self.LongShortDirection('ETHUSDT')
+                            # BUY_SELL, LONG_SHORT = self.LongShortDirection('ETHUSDT')
+                            ## 获取 BTC 方向
+                            BUY_SELL = 'SELL' if BUY_SELL == 'BUY' else 'BUY'
+                            LONG_SHORT = 'SHORT' if LONG_SHORT == 'LONG' else 'LONG'
 
                             logger.info('{} 准备建仓双币'.format('ETHUSDT'))
                             resOrder = trade.open_order('ETHUSDT', BUY_SELL, ethUsdtOrderQuantity, price=None, positionSide=LONG_SHORT).json()
