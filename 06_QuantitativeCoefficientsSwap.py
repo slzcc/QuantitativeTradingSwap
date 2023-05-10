@@ -482,13 +482,11 @@ class GridStrategy(Process):
                         qty_number_assets = qty_number * Decimal(self.redisClient.getKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction)))
                         available_assets = Decimal(item['availableBalance'])
                         if qty_number_assets < available_assets:
-                            return float(qty_number)
+                            return float(qty_number) * ratio
                         else:
                             logger.error("初始化委托价格不能满足使用百分比总仓位, 因超出可用资产金额! 委托价格({}) > 可用资产({})".format(float(qty_number_assets), float(available_assets)))
                             return float(self.redisClient.getKey("{}_account_assets_min_qty_{}".format(self.token, self.direction)))
-                return float(self.redisClient.getKey("{}_account_assets_min_qty_{}".format(self.token, self.direction)))
-            else:
-                return float(self.redisClient.getKey("{}_account_assets_min_qty_{}".format(self.token, self.direction)))
+            return float(self.redisClient.getKey("{}_account_assets_min_qty_{}".format(self.token, self.direction)))
         except:
             return float(self.redisClient.getKey("{}_account_assets_min_qty_{}".format(self.token, self.direction)))
 
