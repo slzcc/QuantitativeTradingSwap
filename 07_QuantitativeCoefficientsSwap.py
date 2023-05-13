@@ -254,13 +254,13 @@ class GridStrategy(Process):
         # 加仓价格是 min_qty * _account_assets_loss_plus_position_multiple_
         # 亏损加仓倍数
         if not self.redisClient.getKey("{}_account_assets_loss_plus_position_multiple_{}".format(self.token, self.direction)):
-            self.redisClient.setKey("{}_account_assets_loss_plus_position_multiple_{}".format(self.token, self.direction), 1)
+            self.redisClient.setKey("{}_account_assets_loss_plus_position_multiple_{}".format(self.token, self.direction), 0.5)
 
         # 默认为 1, 当设置的值大于 1 时一定要根据自身账户总价进行合理的配置
         # 如 _account_assets_loss_plus_position_multiple_ 应为越小越好小于或等于 0.5
         # 加仓次数
         if not self.redisClient.getKey("{}_account_assets_loss_covered_positions_limit_{}".format(self.token, self.direction)):
-            self.redisClient.setKey("{}_account_assets_loss_covered_positions_limit_{}".format(self.token, self.direction), 1)
+            self.redisClient.setKey("{}_account_assets_loss_covered_positions_limit_{}".format(self.token, self.direction), 2)
 
         # 加仓次数计数
         if not self.redisClient.getKey("{}_account_assets_loss_covered_positions_count_{}".format(self.token, self.direction)):
@@ -346,9 +346,10 @@ class GridStrategy(Process):
         # 默认值 1 倍, 也就是 100%
         # 加仓价格是 min_qty * _account_assets_loss_plus_position_multiple_
         35、亏损加仓倍数: {0}_account_assets_loss_plus_position_multiple_{1}
-        # 默认为 1, 当设置的值大于 1 时一定要根据自身账户总价进行合理的配置
+        # 默认为 0.5, 当设置的值大于 1 时一定要根据自身账户总价进行合理的配置
         # 如 _account_assets_loss_plus_position_multiple_ 应为越小越好小于或等于 0.5
         36、允许加仓次数: {0}_account_assets_loss_covered_positions_limit_{1}
+        # 默认 2
         36、加仓次数计数: {0}_account_assets_loss_covered_positions_count_{1}
         # 是否打开亏损加仓模式默认 1, 其他任意值为关闭
         38、是否开启加仓: {0}_account_assets_open_loss_addition_mode_{1}
