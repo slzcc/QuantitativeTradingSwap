@@ -796,7 +796,7 @@ class GridStrategy(Process):
                         ethUsdtOrderQuantity = float('%.3f' % _ethUsdtOrderQuantity)
 
                         ## 获取 ETH 方向
-                        BUY_SELL, LONG_SHORT = self.LongShortDirection('BTCUSDT')
+                        BUY_SELL, LONG_SHORT = self.LongShortDirection('ETHUSDT')
 
                         logger.info('{} 准备建仓单币'.format('ETHUSDT'))
                         resOrder = trade.open_order('ETHUSDT', BUY_SELL, ethUsdtOrderQuantity, price=None, positionSide=LONG_SHORT).json()
