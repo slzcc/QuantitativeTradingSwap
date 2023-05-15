@@ -748,7 +748,7 @@ class GridStrategy(Process):
                 self.redisClient.setKey("{}_futures_{}@usdt_last_trade_price_{}".format(self.token, _symbol_suffix, self.direction), self.redisClient.getKey("{}_futures_{}@usdt_present_price_{}".format(self.token, _symbol_suffix, self.direction)))
             else:
                 # 获取下单池
-                usdt_order_pool = sum([Decimal(item) for item in json.loads(self.redisClient.getKey("{}_futures_eth@usdt_order_pool_{}".format(self.token, self.direction)))])
+                usdt_order_pool = sum([Decimal(item) for item in json.loads(self.redisClient.getKey("{}_futures_{}@usdt_order_pool_{}".format(self.token, _symbol_suffix, self.direction)))])
                 usdt_last_trade_price = Decimal(self.redisClient.getKey("{}_futures_{}@usdt_last_trade_price_{}".format(self.token, _symbol_suffix, self.direction)))
                 usdt_present_price = Decimal(self.redisClient.getKey("{}_futures_{}@usdt_present_price_{}".format(self.token, _symbol_suffix, self.direction)))
                 # 计算均价
