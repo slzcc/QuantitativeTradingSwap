@@ -743,7 +743,17 @@ class GridStrategy(Process):
             usdt_buy_order_number_pool.append(resOrder["orderId"])
             self.redisClient.setKey("{}_futures_{}@usdt_buy_order_number_pool_{}".format(self.token, _symbol_suffix, self.direction), json.dumps(usdt_buy_order_number_pool))
             # 记录下单价格
-            self.redisClient.setKey("{}_futures_{}@usdt_last_trade_price_{}".format(self.token, _symbol_suffix, self.direction), self.redisClient.getKey("{}_futures_{}@usdt_present_price_{}".format(self.token, _symbol_suffix, self.direction)))
+            usdt_last_trade_price = float(self.redisClient.getKey("{}_futures_{}@usdt_last_trade_price_{}".format(self.token, _symbol_suffix, self.direction)))
+            if usdt_last_trade_price == 0:
+                self.redisClient.setKey("{}_futures_{}@usdt_last_trade_price_{}".format(self.token, _symbol_suffix, self.direction), self.redisClient.getKey("{}_futures_{}@usdt_present_price_{}".format(self.token, _symbol_suffix, self.direction)))
+            else:
+                # 获取下单池
+                usdt_order_pool = sum([Decimal(item) for item in json.loads(self.redisClient.getKey("{}_futures_eth@usdt_order_pool_{}".format(self.token, self.direction)))])
+                usdt_last_trade_price = Decimal(self.redisClient.getKey("{}_futures_{}@usdt_last_trade_price_{}".format(self.token, _symbol_suffix, self.direction)))
+                usdt_present_price = Decimal(self.redisClient.getKey("{}_futures_{}@usdt_present_price_{}".format(self.token, _symbol_suffix, self.direction)))
+                # 计算均价
+                order_svg = ((usdt_last_trade_price * usdt_order_pool) + (usdt_present_price * quantity)) / (usdt_order_pool + quantity)
+                self.redisClient.setKey("{}_futures_{}@usdt_last_trade_price_{}".format(self.token, _symbol_suffix, self.direction), float(order_svg))
             # 记录下单池
             usdt_order_pool = json.loads(self.redisClient.getKey("{}_futures_{}@usdt_order_pool_{}".format(self.token, _symbol_suffix, self.direction)))
             usdt_order_pool.append(quantity)
