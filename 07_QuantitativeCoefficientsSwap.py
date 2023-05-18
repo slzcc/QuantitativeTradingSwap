@@ -461,12 +461,6 @@ class GridStrategy(Process):
         """
         try:
             orderInfo = trade.check_order(symbol, orderId).json()
-
-            # 判断是否成功获取订单信息
-            # if not "updateTime" in orderInfo.keys():
-            #     logger.warning("无法正常获取订单 updateTime, 对象数据: ".format(orderInfo))
-            #     return True
-
             # 判断远程 API 当前 orderID 的状态 FILLED 为已经成功建仓 NEW 为委托单 EXPIRED 过期 CANCELED 取消订单
             if orderInfo["status"] == "FILLED":
                 logger.info("检查订单 {} 状态正常".format(orderId))
@@ -494,6 +488,8 @@ class GridStrategy(Process):
           'maxWithdrawAmount': '143.02746490',
           'marginAvailable': True,
           'updateTime': 1683351333603}
+
+        @return 可购买 BTC币 真实数量
         """
         self.account_assets_total_percentage_qty = int(self.redisClient.getKey("{}_account_assets_total_percentage_qty_{}".format(self.token, self.direction)))
         # 当此值为 0 使用 _account_assets_min_qty_ 参数为默认委托价格
@@ -523,52 +519,26 @@ class GridStrategy(Process):
         except:
             return float(self.redisClient.getKey("{}_account_assets_min_qty_{}".format(self.token, self.direction)))
 
-    def ETH_StatisticalIncome(self):
-        """
-        计算 ETH 收益
-        """
-        ## ETH 当前价格
-        eth_usdt_present_price = float(self.redisClient.getKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction)))
-        ## ETH 最后下单价格
-        eth_usdt_last_trade_price = float(self.redisClient.getKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction)))
-        ## 获取 ETH 方向
-        ETH_LONG_SHORT = self.redisClient.getKey("{}_eth_order_direction_{}".format(self.token, self.direction)).split("|")[1]
-
-        # 判定如果大于 profit 则进行清仓
-        if ETH_LONG_SHORT == 'LONG':
-            ## ETHUSDT 盈亏百分比
-            eth_usdt_profi_loss = (eth_usdt_present_price - eth_usdt_last_trade_price) / eth_usdt_present_price * self.ratio * 100
-        else:
-            ## ETHUSDT 盈亏百分比
-            eth_usdt_profi_loss = (eth_usdt_last_trade_price - eth_usdt_present_price) / eth_usdt_present_price * self.ratio * 100
-        return eth_usdt_profi_loss
-
-    def BTC_StatisticalIncome(self):
-        """
-        计算 BTC 收益
-        """
-        ## BTC 当前价格
-        btc_usdt_present_price = float(self.redisClient.getKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction)))
-        ## BTC 最后下单价格
-        btc_usdt_last_trade_price = float(self.redisClient.getKey("{}_futures_btc@usdt_last_trade_price_{}".format(self.token, self.direction)))
-        ## 获取 BTC 方向
-        BTC_LONG_SHORT = self.redisClient.getKey("{}_btc_order_direction_{}".format(self.token, self.direction)).split("|")[1]
-
-        # 判定如果大于 profit 则进行清仓
-        if BTC_LONG_SHORT == 'LONG':
-            ## BTCUSDT 盈亏百分比
-            btc_usdt_profi_loss = (btc_usdt_present_price - btc_usdt_last_trade_price) / btc_usdt_present_price * self.ratio * 100
-        else:
-            ## BTCUSDT 盈亏百分比
-            btc_usdt_profi_loss = (btc_usdt_last_trade_price - btc_usdt_present_price) / btc_usdt_present_price * self.ratio * 100
-        return btc_usdt_profi_loss
-
-    def BTC_and_ETH_StatisticalIncome(self):
+    def symbolStatisticalIncome(self, symbol):
         """
         计算收益
-        获取 BTC 和 ETH 的收益计算返回两个浮点数
         """
-        return self.BTC_StatisticalIncome(), self.ETH_StatisticalIncome()
+        _symbol_suffix = symbol.replace("USDT", "").lower()
+        ## 当前价格
+        usdt_present_price = float(self.redisClient.getKey("{}_futures_{}@usdt_present_price_{}".format(self.token, _symbol_suffix, self.direction)))
+        ## 最后下单价格
+        usdt_last_trade_price = float(self.redisClient.getKey("{}_futures_{}@usdt_last_trade_price_{}".format(self.token, _symbol_suffix, self.direction)))
+        ## 获取方向
+        LONG_SHORT = self.redisClient.getKey("{}_{}_order_direction_{}".format(self.token, _symbol_suffix, self.direction)).split("|")[1]
+
+        # 判定如果大于 profit 则进行清仓
+        if LONG_SHORT == 'LONG':
+            ## 盈亏百分比
+            usdt_profi_loss = (usdt_present_price - usdt_last_trade_price) / usdt_present_price * self.ratio * 100
+        else:
+            ## 盈亏百分比
+            usdt_profi_loss = (usdt_last_trade_price - usdt_present_price) / usdt_present_price * self.ratio * 100
+        return usdt_profi_loss
 
     def TrendShift(self, buy_sell):
         """
@@ -581,101 +551,54 @@ class GridStrategy(Process):
         elif buy_sell == "SELL":
             return 'BUY'
 
-    def BtcUsdtForcedLiquidation(self, trade):
+    def symbolForcedLiquidation(self, trade, symbol):
         """
-        BTC 清仓
+        清仓
         """
+        _symbol_suffix = symbol.replace("USDT", "").lower()
         try:
-            ## 获取 BTC 方向
-            BUY_SELL = self.redisClient.getKey("{}_btc_order_direction_{}".format(self.token, self.direction)).split("|")[0]
-            LONG_SHORT = self.redisClient.getKey("{}_btc_order_direction_{}".format(self.token, self.direction)).split("|")[1]
-            BUY_SELL = self.TrendShift(BUY_SELL)
-
-            btc_order_pool = float(sum([Decimal(item) for item in json.loads(self.redisClient.getKey("{}_futures_btc@usdt_order_pool_{}".format(self.token, self.direction)))]))
-            ## BTC/USDT 清仓
-            resOrder = trade.open_order('BTCUSDT', BUY_SELL, btc_order_pool, price=None, positionSide=LONG_SHORT).json()
+            ## 获取方向
+            BUY_SELL = self.TrendShift(self.redisClient.getKey("{}_{}_order_direction_{}".format(self.token, _symbol_suffix, self.direction)).split("|")[0])
+            LONG_SHORT = self.redisClient.getKey("{}_{}_order_direction_{}".format(self.token, _symbol_suffix, self.direction)).split("|")[1]
+            ## 获取当前下单池
+            order_pool = float(sum([Decimal(item) for item in json.loads(self.redisClient.getKey("{}_futures_{}@usdt_order_pool_{}".format(self.token, _symbol_suffix, self.direction)))]))
+            ## 清仓
+            logger.info("{} 开始清仓, 方向: {}/{}, 清仓数量: {}".format(symbol, BUY_SELL, LONG_SHORT, order_pool))
+            resOrder = trade.open_order(symbol, BUY_SELL, order_pool, price=None, positionSide=LONG_SHORT).json()
             if not 'orderId' in resOrder.keys():
-                logger.error('%s 清仓失败 \t %s \t %s' % ('BTCUSDT', str(resOrder), PublicModels.changeTime(time.time())))
+                logger.error('%s 清仓失败 \t %s \t %s' % (symbol, str(resOrder), PublicModels.changeTime(time.time())))
             else:
                 # 记录订单
-                btc_usdt_sell_order_number_pool = json.loads(self.redisClient.getKey("{}_futures_btc@usdt_sell_order_number_pool_{}".format(self.token, self.direction)))
-                btc_usdt_sell_order_number_pool.append(resOrder["orderId"])
+                order_number_pool = json.loads(self.redisClient.getKey("{}_futures_{}@usdt_sell_order_number_pool_{}".format(self.token, _symbol_suffix, self.direction)))
+                order_number_pool.append(resOrder["orderId"])
                 # 检查订单是否完成, 否则阻塞
-                while self.checkOrder(trade, 'BTCUSDT', resOrder["orderId"]):
+                while self.checkOrder(trade, symbol, resOrder["orderId"]):
                     time.sleep(1)
-                    logger.warning('{} 清仓订单状态异常订单号 {} 订单状态 {}, {}/{}'.format('BTCUSDT', resOrder["orderId"], resOrder["status"], BUY_SELL, LONG_SHORT))
-                self.redisClient.setKey("{}_futures_btc@usdt_sell_order_number_pool_{}".format(self.token, self.direction), json.dumps(btc_usdt_sell_order_number_pool))
-
-                # 获取当前 gas
-                all_order_gas = float(self.redisClient.getKey("{}_all_order_gas_{}".format(self.token, self.direction)))
-                # 计算当前 BTC USDT 数量
-                usdt_number = Decimal(btc_order_pool) * Decimal(float(self.redisClient.getKey("{}_futures_btc@usdt_last_trade_price_{}".format(self.token, self.direction))))
-                # 计算 gas 费用
-                now_gas = (usdt_number * Decimal(0.0004)) + Decimal(all_order_gas)
-                self.redisClient.setKey("{}_all_order_gas_{}".format(self.token, self.direction), float(now_gas))
-
-                # 清除下单价格
-                self.redisClient.setKey("{}_futures_btc@usdt_last_trade_price_{}".format(self.token, self.direction), 0.0)
-                # 清除下单池
-                self.redisClient.setKey("{}_futures_btc@usdt_order_pool_{}".format(self.token, self.direction), '[]')
-                # 清除下单方向
-                self.redisClient.setKey("{}_btc_order_direction_{}".format(self.token, self.direction), '')
-                # 初始化单币模式
-                self.initOpenSingleCurrencyContractTradingPair()
-                # 开启下单模式
-                self.redisClient.setKey("{}_futures_btc@usdt_order_pause_{}".format(self.token, self.direction), 0)
-
-                logger.info('{} 清仓成功, 卖出数量: {}, 等价 USDT: {:.2f}, GAS: {:.2f}'.format('BTCUSDT', btc_order_pool, float(usdt_number), float(now_gas)))
-        except Exception as err:
-            logger.error('{} 清仓异常错误: {}'.format('BTCUSDT', err))
-
-    def EthUsdtForcedLiquidation(self, trade):
-        """
-        ETH 清仓
-        """
-        try:
-            ## 获取 ETH 方向
-            BUY_SELL = self.redisClient.getKey("{}_eth_order_direction_{}".format(self.token, self.direction)).split("|")[0]
-            LONG_SHORT = self.redisClient.getKey("{}_eth_order_direction_{}".format(self.token, self.direction)).split("|")[1]
-            BUY_SELL = self.TrendShift(BUY_SELL)
-
-            eth_order_pool = float(sum([Decimal(item) for item in json.loads(self.redisClient.getKey("{}_futures_eth@usdt_order_pool_{}".format(self.token, self.direction)))]))
-            ## ETH/USDT 清仓
-            resOrder = trade.open_order('ETHUSDT', BUY_SELL, eth_order_pool, price=None, positionSide=LONG_SHORT).json()
-            if not 'orderId' in resOrder.keys():
-                logger.error('%s 清仓失败 \t %s \t %s' % ('ETHUSDT', str(resOrder), PublicModels.changeTime(time.time())))
-            else:
-                # 记录订单
-                eth_usdt_sell_order_number_pool = json.loads(self.redisClient.getKey("{}_futures_eth@usdt_sell_order_number_pool_{}".format(self.token, self.direction)))
-                eth_usdt_sell_order_number_pool.append(resOrder["orderId"])
-                # 检查订单是否完成, 否则阻塞
-                while self.checkOrder(trade, 'ETHUSDT', resOrder["orderId"]):
-                    time.sleep(1)
-                    logger.warning('{} 清仓订单状态异常订单号 {} 订单状态 {}, {}/{}'.format('ETHUSDT', resOrder["orderId"], resOrder["status"], BUY_SELL, LONG_SHORT))
-                self.redisClient.setKey("{}_futures_eth@usdt_sell_order_number_pool_{}".format(self.token, self.direction), json.dumps(eth_usdt_sell_order_number_pool))
+                    logger.warning('{} 清仓订单状态异常订单号 {} 订单状态 {}, {}/{}'.format(symbol, resOrder["orderId"], resOrder["status"], BUY_SELL, LONG_SHORT))
+                self.redisClient.setKey("{}_futures_{}@usdt_sell_order_number_pool_{}".format(self.token, _symbol_suffix, self.direction), json.dumps(order_number_pool))
 
                 # 获取当前 gas
                 all_order_gas = float(self.redisClient.getKey("{}_all_order_gas_{}".format(self.token, self.direction)))
                 # 计算当前 ETC USDT 数量
-                usdt_number = Decimal(eth_order_pool) * Decimal(float(self.redisClient.getKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction))))
+                usdt_number = Decimal(order_pool) * Decimal(float(self.redisClient.getKey("{}_futures_{}@usdt_last_trade_price_{}".format(self.token, _symbol_suffix, self.direction))))
                 # 计算 gas 费用
                 now_gas = (usdt_number * Decimal(0.0004)) + Decimal(all_order_gas)
                 self.redisClient.setKey("{}_all_order_gas_{}".format(self.token, self.direction), float(now_gas))
 
                 # 清除下单价格
-                self.redisClient.setKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction), 0.0)
+                self.redisClient.setKey("{}_futures_{}@usdt_last_trade_price_{}".format(self.token, _symbol_suffix, self.direction), 0.0)
                 # 清除下单池
-                self.redisClient.setKey("{}_futures_eth@usdt_order_pool_{}".format(self.token, self.direction), '[]')
+                self.redisClient.setKey("{}_futures_{}@usdt_order_pool_{}".format(self.token, _symbol_suffix, self.direction), '[]')
                 # 清除下单方向
-                self.redisClient.setKey("{}_eth_order_direction_{}".format(self.token, self.direction), '')
+                self.redisClient.setKey("{}_{}_order_direction_{}".format(self.token, _symbol_suffix, self.direction), '')
                 # 初始化单币模式
                 self.initOpenSingleCurrencyContractTradingPair()
                 # 开启下单模式
-                self.redisClient.setKey("{}_futures_eth@usdt_order_pause_{}".format(self.token, self.direction), 0)
+                self.redisClient.setKey("{}_futures_{}@usdt_order_pause_{}".format(self.token, _symbol_suffix, self.direction), 0)
 
-                logger.info('{} 清仓成功, 卖出数量: {}, 等价 USDT: {:.2f}, GAS: {:.2f}'.format('ETHUSDT', eth_order_pool, float(usdt_number), float(now_gas)))
+                logger.info('{} 清仓成功, 卖出数量: {}, 等价 USDT: {:.2f}, GAS: {:.2f}'.format(symbol, order_pool, float(usdt_number), float(now_gas)))
         except Exception as err:
-            logger.error('{} 清仓异常错误: {}'.format('ETHUSDT', err))
+            logger.error('{} 清仓异常错误: {}'.format(symbol, err))
         
     def LongShortTrend(self):
         """
@@ -737,7 +660,7 @@ class GridStrategy(Process):
                     '%s 建仓失败 \t %s \t %s' % (symbol, str(resOrder), PublicModels.changeTime(time.time())))
             return False
         else:
-            logger.info('{} 建仓成功, 购买数量: {}, 订单返回值: {}'.format(symbol, quantity, resOrder))
+            logger.info('{} 建仓成功, 购买数量: {}, 订单返回值: {}, 订单方向: {}/{}'.format(symbol, quantity, resOrder, BUY_SELL, LONG_SHORT))
             # 记录订单
             usdt_buy_order_number_pool = json.loads(self.redisClient.getKey("{}_futures_{}@usdt_buy_order_number_pool_{}".format(self.token, _symbol_suffix, self.direction)))
             usdt_buy_order_number_pool.append(resOrder["orderId"])
@@ -776,6 +699,12 @@ class GridStrategy(Process):
         初始化单币模式
         """
         self.redisClient.setKey("{}_open_single_currency_contract_trading_pair_{}".format(self.token, self.direction), symbol)
+
+    def DoubleCoinPlusWarehouse(self, btc_usdt_profit_loss, eth_usdt_profit_loss):
+        """
+        判定亏损达到一定阀值后进行双币加仓
+        """
+        pass
 
     def run(self):
         """
@@ -834,7 +763,7 @@ class GridStrategy(Process):
                         logger.info('{} 强制平仓'.format('ETHUSDT'))
 
                         ## ETH/USDT 清仓
-                        g2 = Process(target=self.EthUsdtForcedLiquidation, args=(trade,))
+                        g2 = Process(target=self.symbolForcedLiquidation, args=(trade, 'ETHUSDT',))
                         g2.start()
 
                         # 设置暂停建仓
@@ -844,7 +773,7 @@ class GridStrategy(Process):
                         self.redisClient.setKey("{}_forced_liquidation_{}".format(self.token, self.direction), 'false')
 
                         # 计算收益
-                        eth_usdt_profi_loss = self.ETH_StatisticalIncome()
+                        eth_usdt_profi_loss = self.symbolStatisticalIncome('ETHUSDT')
                         all_order_profit = Decimal(self.redisClient.getKey("{}_all_order_profit_{}".format(self.token, self.direction)))
                         now_profit = Decimal(eth_usdt_profi_loss) + all_order_profit
                         self.redisClient.setKey("{}_all_order_profit_{}".format(self.token, self.direction), float(now_profit))
@@ -897,14 +826,14 @@ class GridStrategy(Process):
                         ETH_LONG_SHORT = self.redisClient.getKey("{}_eth_order_direction_{}".format(self.token, self.direction)).split("|")[1]
 
                         # 计算收益
-                        eth_usdt_profi_loss = self.ETH_StatisticalIncome()
+                        eth_usdt_profi_loss = self.symbolStatisticalIncome('ETHUSDT')
                         logger.info('ETHUSDT 方向: {}/{}, 最新价格: {}, 系数: {}'.format(ETH_BUY_SELL, ETH_LONG_SHORT, float(self.redisClient.getKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction))), float(self.redisClient.getKey("{}_spot_eth@btc_present_price_{}".format(self.token, self.direction)))))
 
                         # 判断收益
                         if (eth_usdt_profi_loss) >= (self.profit * 3):
                             logger.info('准备清仓单币, 当前 ETHUSDT 盈损比例 {}, 合计 {}'.format(eth_usdt_profi_loss, eth_usdt_profi_loss))
                             ## ETH/USDT 清仓
-                            g2 = Process(target=self.EthUsdtForcedLiquidation, args=(trade,))
+                            g2 = Process(target=self.symbolForcedLiquidation, args=(trade, 'ETHUSDT',))
                             g2.start()
 
                             # 设置暂停建仓
@@ -934,9 +863,12 @@ class GridStrategy(Process):
                                 # 判断当前加仓的次数
                                 if loss_covered_positions_limit == loss_covered_positions_count:
                                     logger.warning("加仓触发限制, 无法进行加仓! 进入双币开仓初始阶段!...")
+                                    # 计算加仓的委托数量
                                     self.min_qty += (self.min_qty * loss_plus_position_multiple) * loss_covered_positions_count
                                 elif loss_covered_positions_limit > loss_covered_positions_count:
                                     logger.info("正在进行加仓...")
+                                    # 计算加仓的委托数量
+                                    self.min_qty = "{:.3f}".format(float(Decimal(self.min_qty) * Decimal(loss_plus_position_multiple)))
                                     ## 基于 BTC 开仓数量，计算出 ETH 需要的开仓数量
                                     ## ETH/USDT 开单(最小下单量 0.004)
                                     _ethUsdtOrderQuantity = float(self.redisClient.getKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction))) * self.min_qty / float(self.redisClient.getKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction)))
@@ -980,9 +912,9 @@ class GridStrategy(Process):
                         logger.info('{} 强制平仓'.format('BTCUSDT'))
 
                         ## BTC/USDT 清仓
-                        g1 = Process(target=self.BtcUsdtForcedLiquidation, args=(trade,))
+                        g1 = Process(target=self.symbolForcedLiquidation, args=(trade, 'BTCUSDT',))
                         ## ETH/USDT 清仓
-                        g2 = Process(target=self.EthUsdtForcedLiquidation, args=(trade,))
+                        g2 = Process(target=self.symbolForcedLiquidation, args=(trade, 'ETHUSDT',))
 
                         g1.start()
                         g2.start()
@@ -995,7 +927,7 @@ class GridStrategy(Process):
                         self.redisClient.setKey("{}_forced_liquidation_{}".format(self.token, self.direction), 'false')
 
                         # 计算收益
-                        btc_usdt_profi_loss, eth_usdt_profi_loss = self.BTC_and_ETH_StatisticalIncome()
+                        btc_usdt_profi_loss, eth_usdt_profi_loss = self.symbolStatisticalIncome('BTCUSDT'), self.symbolStatisticalIncome('ETHUSDT')
                         all_order_profit = Decimal(self.redisClient.getKey("{}_all_order_profit_{}".format(self.token, self.direction)))
                         now_profit = Decimal(btc_usdt_profi_loss + eth_usdt_profi_loss) + all_order_profit
                         self.redisClient.setKey("{}_all_order_profit_{}".format(self.token, self.direction), float(now_profit))
@@ -1037,9 +969,7 @@ class GridStrategy(Process):
                             _ethUsdtOrderQuantity = float(self.redisClient.getKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction))) * self.min_qty / float(self.redisClient.getKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction)))
                             ethUsdtOrderQuantity = float('%.3f' % _ethUsdtOrderQuantity)
 
-                            ## 获取 ETH 方向
-                            # BUY_SELL, LONG_SHORT = self.LongShortDirection('ETHUSDT')
-                            ## 获取 BTC 方向
+                            ## 获取方向
                             BUY_SELL = 'SELL' if BUY_SELL == 'BUY' else 'BUY'
                             LONG_SHORT = 'SHORT' if LONG_SHORT == 'LONG' else 'LONG'
 
@@ -1064,15 +994,15 @@ class GridStrategy(Process):
                         BTC_LONG_SHORT = self.redisClient.getKey("{}_btc_order_direction_{}".format(self.token, self.direction)).split("|")[1]
 
                         # 计算收益
-                        btc_usdt_profi_loss, eth_usdt_profi_loss = self.BTC_and_ETH_StatisticalIncome()
+                        btc_usdt_profit_loss, eth_usdt_profit_loss = self.symbolStatisticalIncome('BTCUSDT'), self.symbolStatisticalIncome('ETHUSDT')
                         logger.info('当前 BTCUSDT 方向: {}/{} 最新价格: {}, ETHUSDT 方向: {}/{} 最新价格: {}'.format(BTC_BUY_SELL, BTC_LONG_SHORT, self.redisClient.getKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction)), ETH_BUY_SELL, ETH_LONG_SHORT, self.redisClient.getKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction))))
 
-                        if (btc_usdt_profi_loss + eth_usdt_profi_loss) >= self.profit:
-                            logger.info('准备清仓双币, 当前 BTCUSDT 盈损比例 {:.2f}, ETHUSDT 盈损比例 {:.2f}, 合计 {:.2f}'.format(btc_usdt_profi_loss, eth_usdt_profi_loss, btc_usdt_profi_loss + eth_usdt_profi_loss))
+                        if (btc_usdt_profit_loss + eth_usdt_profit_loss) >= self.profit:
+                            logger.info('准备清仓双币, 当前 BTCUSDT 盈损比例 {:.2f}, ETHUSDT 盈损比例 {:.2f}, 合计 {:.2f}'.format(btc_usdt_profit_loss, eth_usdt_profit_loss, btc_usdt_profit_loss + eth_usdt_profit_loss))
                             ## BTC/USDT 清仓
-                            g1 = Process(target=self.BtcUsdtForcedLiquidation, args=(trade,))
+                            g1 = Process(target=self.symbolForcedLiquidation, args=(trade, 'BTCUSDT',))
                             ## ETH/USDT 清仓
-                            g2 = Process(target=self.EthUsdtForcedLiquidation, args=(trade,))
+                            g2 = Process(target=self.symbolForcedLiquidation, args=(trade, 'ETHUSDT',))
 
                             g1.start()
                             g2.start()
@@ -1083,10 +1013,11 @@ class GridStrategy(Process):
 
                             # 计算收益
                             all_order_profit = Decimal(self.redisClient.getKey("{}_all_order_profit_{}".format(self.token, self.direction)))
-                            now_profit = Decimal(btc_usdt_profi_loss + eth_usdt_profi_loss) + all_order_profit
+                            now_profit = Decimal(btc_usdt_profit_loss + eth_usdt_profit_loss) + all_order_profit
                             self.redisClient.setKey("{}_all_order_profit_{}".format(self.token, self.direction), float(now_profit))
 
                         else:
+                            self.DoubleCoinPlusWarehouse(btc_usdt_profit_loss, eth_usdt_profit_loss)
                             logger.info('持续监听, 当前 BTCUSDT 仓位价格: {} 盈损比例 {:.2f}, ETHUSDT 仓位价格: {} 盈损比例 {:.2f}, 合计 {:.2f}'.format(self.redisClient.getKey("{}_futures_btc@usdt_last_trade_price_{}".format(self.token, self.direction)), btc_usdt_profi_loss, self.redisClient.getKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction)), eth_usdt_profi_loss, (btc_usdt_profi_loss + eth_usdt_profi_loss)))
                 except Exception as err:
                     logger.error('{} 双币主逻辑异常错误: {}'.format('ETHBTC', err))
