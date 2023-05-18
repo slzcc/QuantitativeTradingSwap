@@ -868,7 +868,7 @@ class GridStrategy(Process):
                                 elif loss_covered_positions_limit > loss_covered_positions_count:
                                     logger.info("正在进行加仓...")
                                     # 计算加仓的委托数量
-                                    self.min_qty = "{:.3f}".format(float(Decimal(self.min_qty) * Decimal(loss_plus_position_multiple)))
+                                    self.min_qty = float("{:.3f}".format(Decimal(self.min_qty) * Decimal(loss_plus_position_multiple)))
                                     ## 基于 BTC 开仓数量，计算出 ETH 需要的开仓数量
                                     ## ETH/USDT 开单(最小下单量 0.004)
                                     _ethUsdtOrderQuantity = float(self.redisClient.getKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction))) * self.min_qty / float(self.redisClient.getKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction)))
@@ -1018,7 +1018,7 @@ class GridStrategy(Process):
 
                         else:
                             self.DoubleCoinPlusWarehouse(btc_usdt_profit_loss, eth_usdt_profit_loss)
-                            logger.info('持续监听, 当前 BTCUSDT 仓位价格: {} 盈损比例 {:.2f}, ETHUSDT 仓位价格: {} 盈损比例 {:.2f}, 合计 {:.2f}'.format(self.redisClient.getKey("{}_futures_btc@usdt_last_trade_price_{}".format(self.token, self.direction)), btc_usdt_profi_loss, self.redisClient.getKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction)), eth_usdt_profi_loss, (btc_usdt_profi_loss + eth_usdt_profi_loss)))
+                            logger.info('持续监听, 当前 BTCUSDT 仓位价格: {} 盈损比例 {:.2f}, ETHUSDT 仓位价格: {} 盈损比例 {:.2f}, 合计 {:.2f}'.format(self.redisClient.getKey("{}_futures_btc@usdt_last_trade_price_{}".format(self.token, self.direction)), btc_usdt_profit_loss, self.redisClient.getKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction)), eth_usdt_profit_loss, (btc_usdt_profit_loss + eth_usdt_profit_loss)))
                 except Exception as err:
                     logger.error('{} 双币主逻辑异常错误: {}'.format('ETHBTC', err))
 
