@@ -176,9 +176,9 @@ class GridStrategy(Process):
             self.redisClient.setKey("{}_forced_liquidation_{}".format(self.token, self.direction), 'false')
 
         # 趋势默认值, 当前价格高于此值时 ETH 开空, BTC 开多
-        # 峰值 0.074, 2023-03-16 压力值 0.066
+        # 峰值 0.074, 2023-05-24 压力值 0.0677
         if not self.redisClient.getKey("{}_long_short_trend_{}".format(self.token, self.direction)):
-            self.redisClient.setKey("{}_long_short_trend_{}".format(self.token, self.direction), '0.073')
+            self.redisClient.setKey("{}_long_short_trend_{}".format(self.token, self.direction), '0.0677')
 
         # ETH 下单方向
         # BUY/SELL | LONG/SHORT
@@ -206,8 +206,8 @@ class GridStrategy(Process):
         # 是否开启单币持仓模式
         # ETH/BTC
         # 默认 ETH
-        if not self.redisClient.getKey("{}_open_single_currency_contract_trading_pair_{}".format(self.token, self.direction)):
-            self.redisClient.setKey("{}_open_single_currency_contract_trading_pair_{}".format(self.token, self.direction), 'ETH')
+        if not self.redisClient.getKey("{}_open_single_coin_contract_trading_pair_{}".format(self.token, self.direction)):
+            self.redisClient.setKey("{}_open_single_coin_contract_trading_pair_{}".format(self.token, self.direction), 'ETH')
 
         # timestamp default
         # 记录当前运行时间
@@ -240,7 +240,7 @@ class GridStrategy(Process):
             self.redisClient.setKey("{}_account_assets_min_profit_{}".format(self.token, self.direction), 0.04)
         self.min_profit = float(self.redisClient.getKey("{}_account_assets_min_profit_{}".format(self.token, self.direction)))
 
-        # 开仓倍数(有BUG)
+        # 开仓倍数(杠該)
         if not self.redisClient.getKey("{}_account_assets_ratio_{}".format(self.token, self.direction)):
             self.redisClient.setKey("{}_account_assets_ratio_{}".format(self.token, self.direction), 10)
         self.ratio = int(self.redisClient.getKey("{}_account_assets_ratio_{}".format(self.token, self.direction)))
@@ -251,24 +251,49 @@ class GridStrategy(Process):
         self.loss = float(self.redisClient.getKey("{}_account_assets_loss_{}".format(self.token, self.direction)))
 
         # 当出现亏损到达 _account_assets_loss_ 值时, 进行加仓
-        # 加仓价格是 min_qty * _account_assets_loss_plus_position_multiple_
+        # 加仓价格是 min_qty * _account_assets_single_coin_loss_plus_position_multiple_
         # 亏损加仓倍数
-        if not self.redisClient.getKey("{}_account_assets_loss_plus_position_multiple_{}".format(self.token, self.direction)):
-            self.redisClient.setKey("{}_account_assets_loss_plus_position_multiple_{}".format(self.token, self.direction), 0.5)
+        if not self.redisClient.getKey("{}_account_assets_single_coin_loss_plus_position_multiple_{}".format(self.token, self.direction)):
+            self.redisClient.setKey("{}_account_assets_single_coin_loss_plus_position_multiple_{}".format(self.token, self.direction), 0.25)
+
+        # 默认为 3, 当设置的值大于 1 时一定要根据自身账户总价进行合理的配置
+        # 如 _account_assets_single_coin_loss_plus_position_multiple_ 应为越小越好小于或等于 0.25
+        # 单币加仓次数
+        if not self.redisClient.getKey("{}_account_assets_single_coin_loss_covered_positions_limit_{}".format(self.token, self.direction)):
+            self.redisClient.setKey("{}_account_assets_single_coin_loss_covered_positions_limit_{}".format(self.token, self.direction), 3)
+
+        # 单币加仓次数计数
+        if not self.redisClient.getKey("{}_account_assets_single_coin_loss_covered_positions_count_{}".format(self.token, self.direction)):
+            self.redisClient.setKey("{}_account_assets_single_coin_loss_covered_positions_count_{}".format(self.token, self.direction), 0)
+
+        # 是否打开单币亏损加仓
+        if not self.redisClient.getKey("{}_account_assets_open_single_coin_loss_addition_mode_{}".format(self.token, self.direction)):
+            self.redisClient.setKey("{}_account_assets_open_single_coin_loss_addition_mode_{}".format(self.token, self.direction), 1)
+
+        # 是否打开盈利方向
+        # 1 打开、0 关闭
+        if not self.redisClient.getKey("{}_open_profit_order_direction_{}".format(self.token, self.direction)):
+            self.redisClient.setKey("{}_open_profit_order_direction_{}".format(self.token, self.direction), 1)
+
+        # 盈利方向，反向开仓
+        ## example: ETH/BUY/LONG
+        ## 用于盈利平仓后反向开仓使用
+        if not self.redisClient.getKey("{}_profit_order_direction_{}".format(self.token, self.direction)):
+            self.redisClient.setKey("{}_profit_order_direction_{}".format(self.token, self.direction), '')
+
+        # 是否打开双币亏损加仓
+        if not self.redisClient.getKey("{}_account_assets_open_double_coin_loss_addition_mode_{}".format(self.token, self.direction)):
+            self.redisClient.setKey("{}_account_assets_open_double_coin_loss_addition_mode_{}".format(self.token, self.direction), 1)
 
         # 默认为 1, 当设置的值大于 1 时一定要根据自身账户总价进行合理的配置
-        # 如 _account_assets_loss_plus_position_multiple_ 应为越小越好小于或等于 0.5
-        # 加仓次数
-        if not self.redisClient.getKey("{}_account_assets_loss_covered_positions_limit_{}".format(self.token, self.direction)):
-            self.redisClient.setKey("{}_account_assets_loss_covered_positions_limit_{}".format(self.token, self.direction), 2)
+        # 加仓的数量为一次 min_qty 的数量
+        # 双币币加仓次数
+        if not self.redisClient.getKey("{}_account_assets_double_coin_loss_covered_positions_limit_{}".format(self.token, self.direction)):
+            self.redisClient.setKey("{}_account_assets_double_coin_loss_covered_positions_limit_{}".format(self.token, self.direction), 1)
 
-        # 加仓次数计数
-        if not self.redisClient.getKey("{}_account_assets_loss_covered_positions_count_{}".format(self.token, self.direction)):
-            self.redisClient.setKey("{}_account_assets_loss_covered_positions_count_{}".format(self.token, self.direction), 0)
-
-        # 是否打开亏损加仓
-        if not self.redisClient.getKey("{}_account_assets_open_loss_addition_mode_{}".format(self.token, self.direction)):
-            self.redisClient.setKey("{}_account_assets_open_loss_addition_mode_{}".format(self.token, self.direction), 1)
+        # 双币加仓次数计数
+        if not self.redisClient.getKey("{}_account_assets_double_coin_loss_covered_positions_count_{}".format(self.token, self.direction)):
+            self.redisClient.setKey("{}_account_assets_double_coin_loss_covered_positions_count_{}".format(self.token, self.direction), 0)
 
         # help default
         # Key 说明
@@ -322,7 +347,7 @@ class GridStrategy(Process):
         24、记录当前运行时间: {0}_t_start_{1}
         25、记录上一次下单时间: {0}_last_order_time_{1}
         
-        26、记录是否开启单币持仓模式 (ETH/BTC): {0}_open_single_currency_contract_trading_pair_{1}
+        26、记录是否开启单币持仓模式 (ETH/BTC): {0}_open_single_coin_contract_trading_pair_{1}
         
         27、最小开仓购买币的数量 Example: 0.004/BTC: {0}_account_assets_min_qty_{1}
         28、最大利润/止损, 使用时单位会 * 100, 作为 % 使用: {0}_account_assets_profit_{1}
@@ -343,17 +368,37 @@ class GridStrategy(Process):
         34、使用总资产百分比作为委托价格: {0}_account_assets_total_percentage_qty_{1}
         
         # 当出现亏损到达 _account_assets_loss_ 值时, 进行加仓
-        # 默认值 1 倍, 也就是 100%
-        # 加仓价格是 min_qty * _account_assets_loss_plus_position_multiple_
-        35、亏损加仓倍数: {0}_account_assets_loss_plus_position_multiple_{1}
-        # 默认为 0.5, 当设置的值大于 1 时一定要根据自身账户总价进行合理的配置
-        # 如 _account_assets_loss_plus_position_multiple_ 应为越小越好小于或等于 0.5
-        36、允许加仓次数: {0}_account_assets_loss_covered_positions_limit_{1}
-        # 默认 2
-        36、加仓次数计数: {0}_account_assets_loss_covered_positions_count_{1}
+        # 默认值 0.25 倍, 也就是 25%
+        # 加仓价格是 min_qty * _account_assets_single_coin_loss_plus_position_multiple_
+        35、亏损加仓倍数: {0}_account_assets_single_coin_loss_plus_position_multiple_{1}
+        # 默认为 0.25, 当设置的值大于 1 时一定要根据自身账户总价进行合理的配置
+        # 如 _account_assets_single_coin_loss_plus_position_multiple_ 应为越小越好小于或等于 0.25
+        36、允许加仓次数: {0}_account_assets_single_coin_loss_covered_positions_limit_{1}
+        # 默认 3
+        36、加仓次数计数: {0}_account_assets_single_coin_loss_covered_positions_count_{1}
         # 是否打开亏损加仓模式默认 1, 其他任意值为关闭
-        38、是否开启加仓: {0}_account_assets_open_loss_addition_mode_{1}
+        38、是否开启加仓: {0}_account_assets_open_single_coin_loss_addition_mode_{1}
+        
+        # 盈利反向开仓
+        ## 默认 1 打开，0 关闭
+        39、是否打开盈利反向模式: {0}_open_profit_order_direction_{1}
+        ## example: ETHUSDT/BUY/LONG
+        40、用于盈利平仓后反向开仓使用: {0}_profit_order_direction_{1}
 
+        41、是否打开双币亏损加仓: {0}_account_assets_open_double_coin_loss_addition_mode_{1}
+        42、双币加仓次数: {0}_account_assets_double_coin_loss_covered_positions_limit_{1}
+        43、双币加仓累计次数: {0}_account_assets_double_coin_loss_covered_positions_count_{1}
+
+        @@@@@@@@@@@@@@@@@@@@ 账户持仓算法 @@@@@@@@@@@@@@@@@@@@@@@
+        单币下单数量 = {0}_account_assets_total_percentage_qty_{1}
+        单币亏损加仓数量 = 单币下单数量(20%) * {0}_account_assets_single_coin_loss_plus_position_multiple_{1}
+        单币亏损加仓次数 = {0}_account_assets_single_coin_loss_covered_positions_limit_{1}
+        双币下单数量 = 单币加单数量 * 1
+        双币亏损加仓数量 = 单币下单数量(20%)
+        双币亏损加仓次数: {0}_account_assets_double_coin_loss_covered_positions_limit_{1}
+
+        总仓位(90%) = 单币下单数量(20%) + (单币亏损加仓数量 * 单币亏损加仓次数)(15%) + (双币下单数量(20%) + (单币亏损加仓数量 * 单币亏损加仓次数))(15%) + (双币亏损加仓数量 * 双币亏损加仓次数)(20%)
+        @@@@@@@@@@@@@@@@@@@@@@@ END @@@@@@@@@@@@@@@@@@@@@@@
         """.format(self.token, self.direction)
         self.redisClient.setKey("{}_help_{}".format(self.token, self.direction), _help_text)
 
@@ -622,6 +667,13 @@ class GridStrategy(Process):
         判断下单方向
         BUY/SELL | LONG/SHORT
         """
+        # 是否开启盈利反方向开仓模式
+        open_profit_order_direction = int(self.redisClient.getKey("{}_open_profit_order_direction_{}".format(self.token, self.direction)))
+        profit_order_direction = self.redisClient.getKey("{}_profit_order_direction_{}".format(self.token, self.direction))
+        if (open_profit_order_direction == 1) and profit_order_direction:
+            # 重置盈利方向
+            self.redisClient.setKey("{}_profit_order_direction_{}".format(self.token, self.direction), '')
+            return self.TrendShift(profit_order_direction.split("|")[1]), profit_order_direction.split("|")[2]
 
         if symbol == "BTCUSDT":
             if int(self.redisClient.getKey("{}_long_short_direction_{}".format(self.token, self.direction))) == 1:
@@ -630,6 +682,7 @@ class GridStrategy(Process):
                 return 'SELL', 'SHORT'
             else:
                 return 'BUY', 'LONG'
+
         elif symbol == "ETHUSDT":
             if int(self.redisClient.getKey("{}_long_short_direction_{}".format(self.token, self.direction))) == 1:
                 return 'SELL', 'SHORT'
@@ -666,7 +719,7 @@ class GridStrategy(Process):
             usdt_buy_order_number_pool.append(resOrder["orderId"])
             self.redisClient.setKey("{}_futures_{}@usdt_buy_order_number_pool_{}".format(self.token, _symbol_suffix, self.direction), json.dumps(usdt_buy_order_number_pool))
             # 记录下单价格
-            usdt_last_trade_price = float(self.redisClient.getKey("{}_futures_{}@usdt_last_trade_price_{}".format(self.token, _symbol_suffix, self.direction)))
+            usdt_last_trade_price = Decimal(self.redisClient.getKey("{}_futures_{}@usdt_last_trade_price_{}".format(self.token, _symbol_suffix, self.direction)))
             if usdt_last_trade_price == 0:
                 self.redisClient.setKey("{}_futures_{}@usdt_last_trade_price_{}".format(self.token, _symbol_suffix, self.direction), self.redisClient.getKey("{}_futures_{}@usdt_present_price_{}".format(self.token, _symbol_suffix, self.direction)))
             else:
@@ -698,13 +751,41 @@ class GridStrategy(Process):
         """
         初始化单币模式
         """
-        self.redisClient.setKey("{}_open_single_currency_contract_trading_pair_{}".format(self.token, self.direction), symbol)
+        self.redisClient.setKey("{}_open_single_coin_contract_trading_pair_{}".format(self.token, self.direction), symbol)
 
-    def DoubleCoinPlusWarehouse(self, btc_usdt_profit_loss, eth_usdt_profit_loss):
+    def DoubleCoinPlusWarehouse(self, btc_usdt_profit_loss, eth_usdt_profit_loss, trade):
         """
         判定亏损达到一定阀值后进行双币加仓
         """
-        pass
+        # 获取最新委托价格值
+        self.min_qty = self.initializeOrderPrice(trade=trade, asset='USDT', ratio=self.ratio)
+        # 是否打开双币亏损加仓模式
+        account_assets_open_double_coin_loss_addition_mode = int(self.redisClient.getKey("{}_account_assets_open_double_coin_loss_addition_mode_{}".format(self.token, self.direction)))
+        account_assets_double_coin_loss_covered_positions_limit = int(self.redisClient.getKey("{}_account_assets_double_coin_loss_covered_positions_limit_{}".format(self.token, self.direction)))
+        account_assets_double_coin_loss_covered_positions_count = int(self.redisClient.getKey("{}_account_assets_double_coin_loss_covered_positions_count_{}".format(self.token, self.direction)))
+        if account_assets_open_double_coin_loss_addition_mode != 1:
+            return
+        # 判断是否达到加仓上线
+        if account_assets_double_coin_loss_covered_positions_count >= account_assets_double_coin_loss_covered_positions_limit:
+            logger.info("已达到双币亏损后加仓上限!")
+            return
+        # 判定两个收益率都是小于 -1, 且 eth 亏损的3倍大于 btc 的亏损时, 对 eth 进行加仓
+        if (-1 > btc_usdt_profit_loss) and (-1 > eth_usdt_profit_loss) and ((eth_usdt_profit_loss * 3) > btc_usdt_profit_loss):
+            logger.info("ETHUSDT 进行亏损补仓数量: {}".format(self.min_qty))
+            ## 基于 BTC 开仓数量，计算出 ETH 需要的开仓数量
+            ## ETH/USDT 开单(最小下单量 0.004)
+            _ethUsdtOrderQuantity = float(self.redisClient.getKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction))) * self.min_qty / float(self.redisClient.getKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction)))
+            ethUsdtOrderQuantity = float('%.3f' % _ethUsdtOrderQuantity)
+
+            ## 获取 ETH 方向
+            BUY_SELL = self.redisClient.getKey("{}_eth_order_direction_{}".format(self.token, self.direction)).split("|")[0]
+            LONG_SHORT = self.redisClient.getKey("{}_eth_order_direction_{}".format(self.token, self.direction)).split("|")[1]
+
+            ## 设置补仓数量
+            self.redisClient.setKey("{}_account_assets_double_coin_loss_covered_positions_count_{}".format(self.token, self.direction), (account_assets_double_coin_loss_covered_positions_count + 1))
+            ## 建仓
+            if not self.CreateNewOrder('ETHUSDT', trade, BUY_SELL, LONG_SHORT, ethUsdtOrderQuantity):
+                return
 
     def run(self):
         """
@@ -752,7 +833,7 @@ class GridStrategy(Process):
             self.profit = int(self.redisClient.getKey("{}_account_assets_profit_{}".format(self.token, self.direction)))
             self.min_profit = float(self.redisClient.getKey("{}_account_assets_min_profit_{}".format(self.token, self.direction)))
             self.loss = float(self.redisClient.getKey("{}_account_assets_loss_{}".format(self.token, self.direction)))
-            self.open_single_currency_contract_trading_pair = self.redisClient.getKey("{}_open_single_currency_contract_trading_pair_{}".format(self.token, self.direction))
+            self.open_single_currency_contract_trading_pair = self.redisClient.getKey("{}_open_single_coin_contract_trading_pair_{}".format(self.token, self.direction))
 
             # 判断当前是否开启单币仓位模式
             if self.open_single_currency_contract_trading_pair:
@@ -794,12 +875,17 @@ class GridStrategy(Process):
                     # 如果订单中存在双币池, 且单币开关打开状态, 需要把单币开关进行关闭
                     if len(btc_usdt_order_pool) != 0 and len(eth_usdt_order_pool) != 0:
                         # 关闭单币模式
-                        self.redisClient.setKey("{}_open_single_currency_contract_trading_pair_{}".format(self.token, self.direction), '')
+                        self.redisClient.setKey("{}_open_single_coin_contract_trading_pair_{}".format(self.token, self.direction), '')
                         continue
 
                     # 如果没有被下单则进行第一次下单
                     elif len(btc_usdt_order_pool) == 0 and len(eth_usdt_order_pool) == 0:
                         time.sleep(5)
+                        # 单币初始化加仓配置
+                        self.redisClient.setKey("{}_account_assets_single_coin_loss_covered_positions_count_{}".format(self.token, self.direction), self.redisClient.getKey("{}_account_assets_single_coin_loss_covered_positions_limit_{}".format(self.token, self.direction)))
+                        # 双币初始化加仓配置
+                        self.redisClient.setKey("{}_account_assets_double_coin_loss_covered_positions_count_{}".format(self.token, self.direction), self.redisClient.getKey("{}_account_assets_double_coin_loss_covered_positions_limit_{}".format(self.token, self.direction)))
+
                         # 停止下单
                         if self.redisClient.getKey("{}_order_pause_{}".format(self.token, self.direction)) == 'true':
                             logger.info('{} 停止下单状态'.format('BTCUSDT and ETHUSDT'))
@@ -832,6 +918,9 @@ class GridStrategy(Process):
                         # 判断收益
                         if (eth_usdt_profi_loss) >= (self.profit * 3):
                             logger.info('准备清仓单币, 当前 ETHUSDT 盈损比例 {}, 合计 {}'.format(eth_usdt_profi_loss, eth_usdt_profi_loss))
+                            ## 设置盈利方向
+                            self.redisClient.setKey("{}_profit_order_direction_{}".format(self.token, self.direction), '{}|{}|{}'.format('ETHUSDT', ETH_BUY_SELL, ETH_LONG_SHORT))
+
                             ## ETH/USDT 清仓
                             g2 = Process(target=self.symbolForcedLiquidation, args=(trade, 'ETHUSDT',))
                             g2.start()
@@ -853,18 +942,18 @@ class GridStrategy(Process):
                             self.min_qty = self.initializeOrderPrice(trade=trade, asset='USDT', ratio=self.ratio)
 
                             # 判断是否打开亏损加仓
-                            open_loss_addition_mode = int(self.redisClient.getKey("{}_account_assets_open_loss_addition_mode_{}".format(self.token, self.direction)))
+                            open_loss_addition_mode = int(self.redisClient.getKey("{}_account_assets_open_single_coin_loss_addition_mode_{}".format(self.token, self.direction)))
                             # 获取亏损配置初始数据
-                            loss_covered_positions_limit = int(self.redisClient.getKey("{}_account_assets_loss_covered_positions_limit_{}".format(self.token, self.direction)))
-                            loss_covered_positions_count = int(self.redisClient.getKey("{}_account_assets_loss_covered_positions_count_{}".format(self.token, self.direction)))
-                            loss_plus_position_multiple = float(self.redisClient.getKey("{}_account_assets_loss_plus_position_multiple_{}".format(self.token, self.direction)))
+                            loss_covered_positions_limit = int(self.redisClient.getKey("{}_account_assets_single_coin_loss_covered_positions_limit_{}".format(self.token, self.direction)))
+                            loss_covered_positions_count = int(self.redisClient.getKey("{}_account_assets_single_coin_loss_covered_positions_count_{}".format(self.token, self.direction)))
+                            loss_plus_position_multiple = float(self.redisClient.getKey("{}_account_assets_single_coin_loss_plus_position_multiple_{}".format(self.token, self.direction)))
 
                             if open_loss_addition_mode == 1:
                                 # 判断当前加仓的次数
                                 if loss_covered_positions_limit == loss_covered_positions_count:
                                     logger.warning("加仓触发限制, 无法进行加仓! 进入双币开仓初始阶段!...")
                                     # 计算加仓的委托数量
-                                    self.min_qty += (self.min_qty * loss_plus_position_multiple) * loss_covered_positions_count
+                                    self.min_qty = self.min_qty + ((self.min_qty * loss_plus_position_multiple) * loss_covered_positions_count)
                                 elif loss_covered_positions_limit > loss_covered_positions_count:
                                     logger.info("正在进行加仓...")
                                     # 计算加仓的委托数量
@@ -884,7 +973,7 @@ class GridStrategy(Process):
 
                                     # 对当前数量加一
                                     loss_covered_positions_count = loss_covered_positions_count + 1
-                                    self.redisClient.setKey("{}_account_assets_loss_covered_positions_count_{}".format(self.token, self.direction), loss_covered_positions_count)
+                                    self.redisClient.setKey("{}_account_assets_single_coin_loss_covered_positions_count_{}".format(self.token, self.direction), loss_covered_positions_count)
                                     logger.info('{} 加仓单币成功!..'.format('ETHUSDT'))
                                     time.sleep(5)
                                     continue
@@ -898,9 +987,9 @@ class GridStrategy(Process):
                             if not self.CreateNewOrder('BTCUSDT', trade, BUY_SELL, LONG_SHORT, self.min_qty):
                                 continue
                             # 关闭单币模式
-                            self.redisClient.setKey("{}_open_single_currency_contract_trading_pair_{}".format(self.token, self.direction), '')
+                            self.redisClient.setKey("{}_open_single_coin_contract_trading_pair_{}".format(self.token, self.direction), '')
                         else:
-                            logger.info('持续监听, ETHUSDT 盈损比例 {}, 下单价格: {}'.format(eth_usdt_profi_loss, float(self.redisClient.getKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction)))))
+                            logger.info('持续监听, ETHUSDT 盈损比例 {:.%2}, 下单价格: {}'.format(eth_usdt_profi_loss, float(self.redisClient.getKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction)))))
 
                 except Exception as err:
                     logger.error('{} 单币主逻辑异常错误: {}'.format('ETHBTC', err))
@@ -999,6 +1088,12 @@ class GridStrategy(Process):
 
                         if (btc_usdt_profit_loss + eth_usdt_profit_loss) >= self.profit:
                             logger.info('准备清仓双币, 当前 BTCUSDT 盈损比例 {:.2f}, ETHUSDT 盈损比例 {:.2f}, 合计 {:.2f}'.format(btc_usdt_profit_loss, eth_usdt_profit_loss, btc_usdt_profit_loss + eth_usdt_profit_loss))
+                            ## 设置盈利方向
+                            if btc_usdt_profit_loss > eth_usdt_profit_loss:
+                                self.redisClient.setKey("{}_profit_order_direction_{}".format(self.token, self.direction), '{}|{}|{}'.format('BTCUSDT', BTC_BUY_SELL, BTC_LONG_SHORT))
+                            else:
+                                self.redisClient.setKey("{}_profit_order_direction_{}".format(self.token, self.direction), '{}|{}|{}'.format('ETHUSDT', ETH_BUY_SELL, ETH_LONG_SHORT))
+
                             ## BTC/USDT 清仓
                             g1 = Process(target=self.symbolForcedLiquidation, args=(trade, 'BTCUSDT',))
                             ## ETH/USDT 清仓
@@ -1017,7 +1112,8 @@ class GridStrategy(Process):
                             self.redisClient.setKey("{}_all_order_profit_{}".format(self.token, self.direction), float(now_profit))
 
                         else:
-                            self.DoubleCoinPlusWarehouse(btc_usdt_profit_loss, eth_usdt_profit_loss)
+                            # 双币亏损加仓
+                            self.DoubleCoinPlusWarehouse(btc_usdt_profit_loss, eth_usdt_profit_loss, trade)
                             logger.info('持续监听, 当前 BTCUSDT 仓位价格: {} 盈损比例 {:.2f}, ETHUSDT 仓位价格: {} 盈损比例 {:.2f}, 合计 {:.2f}'.format(self.redisClient.getKey("{}_futures_btc@usdt_last_trade_price_{}".format(self.token, self.direction)), btc_usdt_profit_loss, self.redisClient.getKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction)), eth_usdt_profit_loss, (btc_usdt_profit_loss + eth_usdt_profit_loss)))
                 except Exception as err:
                     logger.error('{} 双币主逻辑异常错误: {}'.format('ETHBTC', err))
