@@ -709,8 +709,7 @@ class GridStrategy(Process):
                 logger.error('%s 建仓失败, 可用金不足 \t %s \t %s' % (
                 symbol, str(resOrder), PublicModels.changeTime(time.time())))
             else:
-                logger.error(
-                    '%s 建仓失败 \t %s \t %s' % (symbol, str(resOrder), PublicModels.changeTime(time.time())))
+                logger.error('{} 建仓失败, 错误信息: {}, 触发时间: {}, 下单方向: {}/{}, 下单金额: {}'.format(symbol, str(resOrder), PublicModels.changeTime(time.time()), BUY_SELL, LONG_SHORT, quantity))
             return False
         else:
             logger.info('{} 建仓成功, 购买数量: {}, 订单返回值: {}, 订单方向: {}/{}'.format(symbol, quantity, resOrder, BUY_SELL, LONG_SHORT))
