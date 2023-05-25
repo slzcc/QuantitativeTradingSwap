@@ -1187,7 +1187,7 @@ class GridStrategy(Process):
                         else:
                             # 双币亏损加仓
                             self.DoubleCoinPlusWarehouse(btc_usdt_profit_loss, eth_usdt_profit_loss, trade)
-                            logger.info('持续监听双币模式, 当前 BTCUSDT 仓位价格: {} 盈损比例 {:.2f}%, ETHUSDT 仓位价格: {:.2f} 盈损比例 {:.2f}%, 杠杆倍数: {}, 合计 {:.2f}%'.format(self.redisClient.getKey("{}_futures_btc@usdt_last_trade_price_{}".format(self.token, self.direction)), btc_usdt_profit_loss, self.redisClient.getKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction)), eth_usdt_profit_loss, self.ratio, (btc_usdt_profit_loss + eth_usdt_profit_loss)))
+                            logger.info('持续监听双币模式, 当前 BTCUSDT 仓位价格: {} 盈损比例 {:.2f}%, ETHUSDT 仓位价格: {:.2f} 盈损比例 {:.2f}%, 杠杆倍数: {}, 合计 {:.2f}%'.format(self.redisClient.getKey("{}_futures_btc@usdt_last_trade_price_{}".format(self.token, self.direction)), btc_usdt_profit_loss, float(self.redisClient.getKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction))), eth_usdt_profit_loss, self.ratio, (btc_usdt_profit_loss + eth_usdt_profit_loss)))
                 except Exception as err:
                     logger.error('{} 双币主逻辑异常错误: {}'.format('ETHBTC', err))
 
