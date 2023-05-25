@@ -955,7 +955,7 @@ class GridStrategy(Process):
                                     # 计算加仓的委托数量
                                     self.min_qty = self.min_qty + ((self.min_qty * loss_plus_position_multiple) * loss_covered_positions_count)
                                 elif loss_covered_positions_limit > loss_covered_positions_count:
-                                    logger.info("正在进行加仓...")
+                                    logger.info("{} 进行单币亏损加仓计算阶段...".format('ETHUSDT'))
                                     # 计算加仓的委托数量
                                     self.min_qty = float("{:.3f}".format(Decimal(self.min_qty) * Decimal(loss_plus_position_multiple)))
                                     ## 基于 BTC 开仓数量，计算出 ETH 需要的开仓数量
@@ -967,14 +967,14 @@ class GridStrategy(Process):
                                     BUY_SELL = self.redisClient.getKey("{}_eth_order_direction_{}".format(self.token, self.direction)).split("|")[0]
                                     LONG_SHORT = self.redisClient.getKey("{}_eth_order_direction_{}".format(self.token, self.direction)).split("|")[1]
 
-                                    logger.info('{} 准备加仓单币..'.format('ETHUSDT'))
+                                    logger.info('{} 准备单币亏损加仓, 方向: {}/{}, 委托数量: {}'.format('ETHUSDT', BUY_SELL, LONG_SHORT, ethUsdtOrderQuantity))
                                     if not self.CreateNewOrder('ETHUSDT', trade, BUY_SELL, LONG_SHORT, ethUsdtOrderQuantity):
                                         continue
 
                                     # 对当前数量加一
                                     loss_covered_positions_count = loss_covered_positions_count + 1
                                     self.redisClient.setKey("{}_account_assets_single_coin_loss_covered_positions_count_{}".format(self.token, self.direction), loss_covered_positions_count)
-                                    logger.info('{} 加仓单币成功!..'.format('ETHUSDT'))
+                                    logger.info('{} 单币亏损加仓成功!..'.format('ETHUSDT'))
                                     time.sleep(5)
                                     continue
 
@@ -983,11 +983,12 @@ class GridStrategy(Process):
                             LONG_SHORT = 'SHORT' if ETH_LONG_SHORT == 'LONG' else 'LONG'
 
                             ## BTC/USDT 开单(最小下单量 0.001)
-                            logger.info('{} 准备建仓 单币转双币'.format('BTCUSDT'))
+                            logger.info('{} 准备建仓, 进入单币转双币, 方向: {}/{}, 委托数量: {}'.format('BTCUSDT', BUY_SELL, LONG_SHORT, self.min_qty))
                             if not self.CreateNewOrder('BTCUSDT', trade, BUY_SELL, LONG_SHORT, self.min_qty):
                                 continue
                             # 关闭单币模式
                             self.initOpenSingleCurrencyContractTradingPair(symbol='')
+                            logger.info('{} 单币转双币加仓成功!..'.format('BTCUSDT'))
                         else:
                             logger.info('持续监听, ETHUSDT 盈损比例 {:.2f}, 下单价格: {}'.format(eth_usdt_profi_loss, float(self.redisClient.getKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction)))))
 
