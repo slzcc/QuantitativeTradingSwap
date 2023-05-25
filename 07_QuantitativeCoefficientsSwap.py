@@ -765,7 +765,7 @@ class GridStrategy(Process):
             # 记录订单
             coin_buy_order_number_pool = json.loads(self.redisClient.getKey("{}_futures_{}@usdt_buy_order_number_pool_{}".format(self.token, _symbol_suffix, self.direction)))
             coin_buy_order_number_pool.append(resOrder["orderId"])
-            self.redisClient.setKey("{}_futures_{}@usdt_buy_order_number_pool_{}".format(self.token, _symbol_suffix, self.direction), json.dumps(usdt_buy_order_number_pool))
+            self.redisClient.setKey("{}_futures_{}@usdt_buy_order_number_pool_{}".format(self.token, _symbol_suffix, self.direction), json.dumps(coin_buy_order_number_pool))
             # 记录下单价格
             coin_last_trade_price = Decimal(self.redisClient.getKey("{}_futures_{}@usdt_last_trade_price_{}".format(self.token, _symbol_suffix, self.direction)))
             if coin_last_trade_price == 0:
