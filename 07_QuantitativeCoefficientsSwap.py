@@ -1025,19 +1025,20 @@ class GridStrategy(Process):
                                     logger.info("{} 进行单币亏损加仓计算阶段, 当前次数: {}, 上限次数: {}, 开仓数量: ({}(委托价) * {}(加仓比例))".format('ETHUSDT', loss_covered_positions_count, loss_covered_positions_limit, self.min_qty, loss_plus_position_multiple))
                                     ## 计算 ETH 下单数量
                                     _ethUsdtOrderQuantity = self.usdtConvertsCoins(symbol='ETH', quantity=self.min_qty)
-                                    ethUsdtOrderQuantity = float('{:.3f}'.format(_ethUsdtOrderQuantity * loss_plus_position_multiple))
+                                    ethUsdtOrderQuantity = float('{:.3f}'.format(Decimal(_ethUsdtOrderQuantity * loss_plus_position_multiple)))
 
                                     ## 获取 ETH 方向
                                     BUY_SELL = self.redisClient.getKey("{}_eth_order_direction_{}".format(self.token, self.direction)).split("|")[0]
                                     LONG_SHORT = self.redisClient.getKey("{}_eth_order_direction_{}".format(self.token, self.direction)).split("|")[1]
 
+                                    # 对当前数量加一
+                                    loss_covered_positions_count = loss_covered_positions_count + 1
+                                    self.redisClient.setKey("{}_account_assets_single_coin_loss_covered_positions_count_{}".format(self.token, self.direction), loss_covered_positions_count)
+
                                     logger.info('{} 准备单币亏损加仓, 方向: {}/{}, 委托数量: {}'.format('ETHUSDT', BUY_SELL, LONG_SHORT, ethUsdtOrderQuantity))
                                     if not self.CreateNewOrder('ETHUSDT', trade, BUY_SELL, LONG_SHORT, ethUsdtOrderQuantity):
                                         continue
 
-                                    # 对当前数量加一
-                                    loss_covered_positions_count = loss_covered_positions_count + 1
-                                    self.redisClient.setKey("{}_account_assets_single_coin_loss_covered_positions_count_{}".format(self.token, self.direction), loss_covered_positions_count)
                                     logger.info('{} 单币亏损加仓成功!..'.format('ETHUSDT'))
                                     time.sleep(5)
                                     continue
