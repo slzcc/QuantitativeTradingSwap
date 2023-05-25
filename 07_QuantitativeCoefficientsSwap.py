@@ -826,11 +826,6 @@ class GridStrategy(Process):
         """
         判定亏损达到一定阀值后进行双币加仓
         """
-        # 获取最新委托价格值
-        self.min_qty = self.initializeOrderPrice(trade=trade, asset='USDT', ratio=self.ratio)
-        # 计算 ETH 购买数量
-        ethUsdtOrderQuantity = self.usdtConvertsCoins(symbol='ETH', quantity=self.min_qty)
-
         # 是否打开双币亏损加仓模式
         account_assets_open_double_coin_loss_addition_mode = int(self.redisClient.getKey("{}_account_assets_open_double_coin_loss_addition_mode_{}".format(self.token, self.direction)))
         account_assets_double_coin_loss_covered_positions_limit = int(self.redisClient.getKey("{}_account_assets_double_coin_loss_covered_positions_limit_{}".format(self.token, self.direction)))
@@ -843,6 +838,11 @@ class GridStrategy(Process):
             return
         # 判定两个收益率都是小于 -1, 且 eth 亏损的3倍大于 btc 的亏损时, 对 eth 进行加仓
         if (-1 > btc_usdt_profit_loss) and (-1 > eth_usdt_profit_loss) and ((eth_usdt_profit_loss * 3) > btc_usdt_profit_loss):
+            # 获取最新委托价格值
+            self.min_qty = self.initializeOrderPrice(trade=trade, asset='USDT', ratio=self.ratio)
+            # 计算 ETH 购买数量
+            ethUsdtOrderQuantity = self.usdtConvertsCoins(symbol='ETH', quantity=self.min_qty)
+
             logger.info("ETHUSDT 进行亏损补仓数量: {}".format(ethUsdtOrderQuantity))
 
             ## 获取 ETH 方向
