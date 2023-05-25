@@ -72,12 +72,8 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 console_handler.setFormatter(formatter)
 file_handler.setFormatter(formatter)
 
-redisClient = redisMethod.redisUtils()
-
-# websocket.enableTrace(True)
-
 class GridStrategy(Process):
-    def __init__(self, key, secret, token):
+    def __init__(self, key, secret, token, redis_host, redis_port, redis_db, redis_auth):
         """
         :param symbol: BTCUSDT多
         :param key   : AccessKey
@@ -86,7 +82,7 @@ class GridStrategy(Process):
         """
         super().__init__()
 
-        self.redisClient = redisMethod.redisUtils()  # redis 对象
+        self.redisClient = redisMethod.redisUtils(host=redis_host, port=redis_port, db=redis_db, auth=redis_auth)  # redis 对象
         self.token = token              # redis key 前缀
         self.key = key                  # 用户凭证
         self.secret = secret            # 用户凭证
@@ -1201,7 +1197,7 @@ class GridStrategy(Process):
 
 if __name__ == '__main__':
     args = command_line_args(sys.argv[1:])
-    conn_setting = {'key': args.key, 'secret': args.secret, 'token': args.token}
+    conn_setting = {'key': args.key, 'secret': args.secret, 'token': args.token, 'redis_host': args.rhost, 'redis_port': args.rport, 'redis_db': args.rdb, 'redis_auth': args.rauth}
     
     gs = GridStrategy(**conn_setting)
     gs.run()

@@ -13,9 +13,9 @@ import redis
 
 class redisUtils:
 
-    def __init__(self):
+    def __init__(self, host='127.0.0.1', port=6379, db=0, auth=''):
 
-        self.client = redis.Redis(host='127.0.0.1', port=6379, decode_responses=True, db=0)
+        self.client = redis.Redis(host=host, port=port, decode_responses=True, db=db, password=auth)
 
     def setKey(self, key, data, expire=None):
         """
