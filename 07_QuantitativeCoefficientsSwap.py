@@ -777,7 +777,7 @@ class GridStrategy(Process):
                 usdt_last_trade_price = Decimal(self.redisClient.getKey("{}_futures_{}@usdt_last_trade_price_{}".format(self.token, _symbol_suffix, self.direction)))
                 usdt_present_price = Decimal(self.redisClient.getKey("{}_futures_{}@usdt_present_price_{}".format(self.token, _symbol_suffix, self.direction)))
                 # 计算均价
-                order_svg = ((usdt_last_trade_price * usdt_order_pool) + (usdt_present_price * quantity)) / (usdt_order_pool + quantity)
+                order_svg = ((usdt_last_trade_price * usdt_order_pool) + (usdt_present_price * Decimal(quantity))) / (usdt_order_pool + Decimal(quantity))
                 self.redisClient.setKey("{}_futures_{}@usdt_last_trade_price_{}".format(self.token, _symbol_suffix, self.direction), float(order_svg))
             # 记录下单池
             usdt_order_pool = json.loads(self.redisClient.getKey("{}_futures_{}@usdt_order_pool_{}".format(self.token, _symbol_suffix, self.direction)))
