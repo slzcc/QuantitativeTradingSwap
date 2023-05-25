@@ -762,27 +762,26 @@ class GridStrategy(Process):
                 logger.error('{} 建仓失败, 错误信息: {}, 触发时间: {}, 下单方向: {}/{}, 下单金额: {}'.format(symbol, str(resOrder), PublicModels.changeTime(time.time()), BUY_SELL, LONG_SHORT, quantity))
             return False
         else:
-            logger.info('{} 建仓成功, 购买数量: {}, 订单返回值: {}, 订单方向: {}/{}'.format(symbol, quantity, resOrder, BUY_SELL, LONG_SHORT))
             # 记录订单
-            usdt_buy_order_number_pool = json.loads(self.redisClient.getKey("{}_futures_{}@usdt_buy_order_number_pool_{}".format(self.token, _symbol_suffix, self.direction)))
-            usdt_buy_order_number_pool.append(resOrder["orderId"])
+            coin_buy_order_number_pool = json.loads(self.redisClient.getKey("{}_futures_{}@usdt_buy_order_number_pool_{}".format(self.token, _symbol_suffix, self.direction)))
+            coin_buy_order_number_pool.append(resOrder["orderId"])
             self.redisClient.setKey("{}_futures_{}@usdt_buy_order_number_pool_{}".format(self.token, _symbol_suffix, self.direction), json.dumps(usdt_buy_order_number_pool))
             # 记录下单价格
-            usdt_last_trade_price = Decimal(self.redisClient.getKey("{}_futures_{}@usdt_last_trade_price_{}".format(self.token, _symbol_suffix, self.direction)))
-            if usdt_last_trade_price == 0:
+            coin_last_trade_price = Decimal(self.redisClient.getKey("{}_futures_{}@usdt_last_trade_price_{}".format(self.token, _symbol_suffix, self.direction)))
+            if coin_last_trade_price == 0:
                 self.redisClient.setKey("{}_futures_{}@usdt_last_trade_price_{}".format(self.token, _symbol_suffix, self.direction), self.redisClient.getKey("{}_futures_{}@usdt_present_price_{}".format(self.token, _symbol_suffix, self.direction)))
             else:
                 # 获取下单池
-                usdt_order_pool = sum([Decimal(item) for item in json.loads(self.redisClient.getKey("{}_futures_{}@usdt_order_pool_{}".format(self.token, _symbol_suffix, self.direction)))])
-                usdt_last_trade_price = Decimal(self.redisClient.getKey("{}_futures_{}@usdt_last_trade_price_{}".format(self.token, _symbol_suffix, self.direction)))
-                usdt_present_price = Decimal(self.redisClient.getKey("{}_futures_{}@usdt_present_price_{}".format(self.token, _symbol_suffix, self.direction)))
+                coin_order_pool = sum([Decimal(item) for item in json.loads(self.redisClient.getKey("{}_futures_{}@usdt_order_pool_{}".format(self.token, _symbol_suffix, self.direction)))])
+                coin_last_trade_price = Decimal(self.redisClient.getKey("{}_futures_{}@usdt_last_trade_price_{}".format(self.token, _symbol_suffix, self.direction)))
+                coin_present_price = Decimal(self.redisClient.getKey("{}_futures_{}@usdt_present_price_{}".format(self.token, _symbol_suffix, self.direction)))
                 # 计算均价
-                order_svg = ((usdt_last_trade_price * usdt_order_pool) + (usdt_present_price * Decimal(quantity))) / (usdt_order_pool + Decimal(quantity))
-                self.redisClient.setKey("{}_futures_{}@usdt_last_trade_price_{}".format(self.token, _symbol_suffix, self.direction), float(order_svg))
+                coin_order_svg = ((coin_last_trade_price * coin_order_pool) + (coin_present_price * Decimal(quantity))) / (coin_order_pool + Decimal(quantity))
+                self.redisClient.setKey("{}_futures_{}@usdt_last_trade_price_{}".format(self.token, _symbol_suffix, self.direction), "{:.5f}".format(float(coin_order_svg)))
             # 记录下单池
-            usdt_order_pool = json.loads(self.redisClient.getKey("{}_futures_{}@usdt_order_pool_{}".format(self.token, _symbol_suffix, self.direction)))
-            usdt_order_pool.append(quantity)
-            self.redisClient.setKey("{}_futures_{}@usdt_order_pool_{}".format(self.token, _symbol_suffix, self.direction), json.dumps(usdt_order_pool))
+            coin_order_pool = json.loads(self.redisClient.getKey("{}_futures_{}@usdt_order_pool_{}".format(self.token, _symbol_suffix, self.direction)))
+            coin_order_pool.append(quantity)
+            self.redisClient.setKey("{}_futures_{}@usdt_order_pool_{}".format(self.token, _symbol_suffix, self.direction), json.dumps(coin_order_pool))
             # 记录下单方向
             self.redisClient.setKey("{}_{}_order_direction_{}".format(self.token, _symbol_suffix, self.direction), "{}|{}".format(BUY_SELL, LONG_SHORT))
             # 获取当前 gas
@@ -794,6 +793,8 @@ class GridStrategy(Process):
             self.redisClient.setKey("{}_all_order_gas_{}".format(self.token, self.direction), float(now_gas))
             # 记录下单时间
             self.redisClient.setKey("{}_last_order_time_{}".format(self.token, self.direction), time.time())
+
+            logger.info('{} 建仓成功, 购买数量: {}, 订单返回值: {}, 订单方向: {}/{}, 等价 USDT: {}, GAS: {}'.format(symbol, quantity, resOrder, BUY_SELL, LONG_SHORT, usdt_number, now_gas))
         return resOrder
 
     def initOpenSingleCurrencyContractTradingPair(self, symbol='ETH'):
@@ -1186,7 +1187,7 @@ class GridStrategy(Process):
                         else:
                             # 双币亏损加仓
                             self.DoubleCoinPlusWarehouse(btc_usdt_profit_loss, eth_usdt_profit_loss, trade)
-                            logger.info('持续监听双币模式, 当前 BTCUSDT 仓位价格: {} 盈损比例 {:.2f}%, ETHUSDT 仓位价格: {} 盈损比例 {:.2f}%, 杠杆倍数: {}, 合计 {:.2f}%'.format(self.redisClient.getKey("{}_futures_btc@usdt_last_trade_price_{}".format(self.token, self.direction)), btc_usdt_profit_loss, self.redisClient.getKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction)), eth_usdt_profit_loss, self.ratio, (btc_usdt_profit_loss + eth_usdt_profit_loss)))
+                            logger.info('持续监听双币模式, 当前 BTCUSDT 仓位价格: {} 盈损比例 {:.2f}%, ETHUSDT 仓位价格: {:.2f} 盈损比例 {:.2f}%, 杠杆倍数: {}, 合计 {:.2f}%'.format(self.redisClient.getKey("{}_futures_btc@usdt_last_trade_price_{}".format(self.token, self.direction)), btc_usdt_profit_loss, self.redisClient.getKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction)), eth_usdt_profit_loss, self.ratio, (btc_usdt_profit_loss + eth_usdt_profit_loss)))
                 except Exception as err:
                     logger.error('{} 双币主逻辑异常错误: {}'.format('ETHBTC', err))
 
