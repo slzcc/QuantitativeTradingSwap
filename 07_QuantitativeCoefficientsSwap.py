@@ -911,7 +911,7 @@ class GridStrategy(Process):
             self.open_single_currency_contract_trading_pair = self.redisClient.getKey("{}_open_single_coin_contract_trading_pair_{}".format(self.token, self.direction))
 
             # 判断当前是否开启单币仓位模式
-            if self.open_single_currency_contract_trading_pair:
+            if self.open_single_currency_contract_trading_pair != 'NULL':
                 try:
                     time.sleep(0.3)
                     # 强制平仓
@@ -950,7 +950,7 @@ class GridStrategy(Process):
                     # 如果订单中存在双币池, 且单币开关打开状态, 需要把单币开关进行关闭
                     if len(btc_usdt_order_pool) != 0 and len(eth_usdt_order_pool) != 0:
                         # 关闭单币模式
-                        self.initOpenSingleCurrencyContractTradingPair(symbol='')
+                        self.initOpenSingleCurrencyContractTradingPair(symbol='NULL')
                         continue
 
                     # 如果没有被下单则进行第一次下单
@@ -1028,7 +1028,7 @@ class GridStrategy(Process):
                                 logger.info("进入单币亏损加仓初始阶段..")
                                 # 判断当前加仓的次数
                                 if loss_covered_positions_limit == loss_covered_positions_count:
-                                    logger.warning("加仓触发限制, 无法进行加仓! 进入双币开仓初始阶段!...")
+                                    logger.warning("加仓触发限制, 无法进行加仓! 进入双币开仓初始阶段!, 当前次数: {}, 上限次数: {}".format(loss_covered_positions_count, loss_covered_positions_limit))
                                     # 计算加仓的委托数量
                                     self.min_qty = self.min_qty + ((self.min_qty * loss_plus_position_multiple) * loss_covered_positions_count)
                                 elif loss_covered_positions_limit > loss_covered_positions_count:
@@ -1063,10 +1063,10 @@ class GridStrategy(Process):
                             if not self.CreateNewOrder('BTCUSDT', trade, BUY_SELL, LONG_SHORT, btcUsdtOrderQuantity):
                                 continue
                             # 关闭单币模式
-                            self.initOpenSingleCurrencyContractTradingPair(symbol='')
+                            self.initOpenSingleCurrencyContractTradingPair(symbol='NULL')
                             logger.info('{} 单币转双币加仓成功!..'.format('BTCUSDT'))
                         else:
-                            logger.info('持续监听, ETHUSDT 盈损比例 {:.2f}, 下单价格: {}'.format(eth_usdt_profi_loss, float(self.redisClient.getKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction)))))
+                            logger.info('持续监听单币模式, ETHUSDT 盈损比例 {:.2f}, 下单价格: {}'.format(eth_usdt_profi_loss, float(self.redisClient.getKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction)))))
 
                 except Exception as err:
                     logger.error('{} 单币主逻辑异常错误: {}'.format('ETHBTC', err))
@@ -1195,7 +1195,7 @@ class GridStrategy(Process):
                         else:
                             # 双币亏损加仓
                             self.DoubleCoinPlusWarehouse(btc_usdt_profit_loss, eth_usdt_profit_loss, trade)
-                            logger.info('持续监听, 当前 BTCUSDT 仓位价格: {} 盈损比例 {:.2f}, ETHUSDT 仓位价格: {} 盈损比例 {:.2f}, 合计 {:.2f}'.format(self.redisClient.getKey("{}_futures_btc@usdt_last_trade_price_{}".format(self.token, self.direction)), btc_usdt_profit_loss, self.redisClient.getKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction)), eth_usdt_profit_loss, (btc_usdt_profit_loss + eth_usdt_profit_loss)))
+                            logger.info('持续监听双币模式, 当前 BTCUSDT 仓位价格: {} 盈损比例 {:.2f}, ETHUSDT 仓位价格: {} 盈损比例 {:.2f}, 合计 {:.2f}'.format(self.redisClient.getKey("{}_futures_btc@usdt_last_trade_price_{}".format(self.token, self.direction)), btc_usdt_profit_loss, self.redisClient.getKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction)), eth_usdt_profit_loss, (btc_usdt_profit_loss + eth_usdt_profit_loss)))
                 except Exception as err:
                     logger.error('{} 双币主逻辑异常错误: {}'.format('ETHBTC', err))
 
