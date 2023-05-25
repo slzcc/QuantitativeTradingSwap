@@ -179,12 +179,12 @@ class GridStrategy(Process):
         # ETH 下单方向
         # BUY/SELL | LONG/SHORT
         if not self.redisClient.getKey("{}_eth_order_direction_{}".format(self.token, self.direction)):
-            self.redisClient.setKey("{}_eth_order_direction_{}".format(self.token, self.direction), 'SELL|SHORT')
+            self.redisClient.setKey("{}_eth_order_direction_{}".format(self.token, self.direction), '')
 
         # BTC 下单方向
         # BUY/SELL | LONG/SHORT
         if not self.redisClient.getKey("{}_btc_order_direction_{}".format(self.token, self.direction)):
-            self.redisClient.setKey("{}_btc_order_direction_{}".format(self.token, self.direction), 'BUY|LONG')
+            self.redisClient.setKey("{}_btc_order_direction_{}".format(self.token, self.direction), '')
 
         # 手动模式
         # 默认 false， 当等于 true 时, 则不会自动平单
@@ -625,7 +625,7 @@ class GridStrategy(Process):
         LONG_SHORT = self.redisClient.getKey("{}_{}_order_direction_{}".format(self.token, _symbol_suffix, self.direction)).split("|")[1]
 
         # 判定如果大于 profit 则进行清仓
-        if LONG_SHORT == 'LONG':
+        if LONG_SHORT == 'SHORT':
             ## 盈亏百分比
             usdt_profi_loss = (usdt_present_price - usdt_last_trade_price) / usdt_present_price * self.ratio * 100
         else:
@@ -806,30 +806,19 @@ class GridStrategy(Process):
         """
         USDT 转换 比对可购买数量
         """
-        if symbol == "BTC":
-            futures_btc_usdt_present_price = self.redisClient.getKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction))
+        try:
+            futures_usdt_present_price = self.redisClient.getKey("{}_futures_{}@usdt_present_price_{}".format(self.token, symbol.lower(), self.direction))
             # usdt 转换 币 真实数量，并做四舍五入
-            qty_number = round(Decimal(quantity) / Decimal(futures_btc_usdt_present_price), 3)
-            # 需大于 btc 最小下单价格: 0.001
+            qty_number = round(Decimal(quantity) / Decimal(futures_usdt_present_price), 3)
+            # 需大于最小下单价格: 0.001
             if qty_number < Decimal('0.001'):
-                logger.info("USDT/{0} 币对转换率: {1}:{2} ({0}:USDT)".format(symbol, 0.001, quantity))
+                logger.info("{0} -> USDT 转换阶段, 可使用 {1}(USDT) 转换 {2}({0})".format(symbol, quantity, 0.001))
                 return 0.001
             else:
-                logger.info("USDT/{0} 币对转换率: {1}:{2} ({0}:USDT)".format(symbol, qty_number, quantity))
+                logger.info("{0} -> USDT 转换阶段, 可使用 {1}(USDT) 转换 {2}({0})".format(symbol, quantity, qty_number))
                 return float(qty_number)
-        elif symbol == "ETH":
-            futures_eth_usdt_present_price = self.redisClient.getKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction))
-            # usdt 转换 币 真实数量，并做四舍五入
-            qty_number = round(Decimal(quantity) / Decimal(futures_eth_usdt_present_price), 3)
-            # 需大于 eth 最小下单价格: 0.001
-            if qty_number < Decimal('0.001'):
-                logger.info("USDT/{0} 币对转换率: {1}:{2} ({0}:USDT)".format(symbol, 0.001, quantity))
-                return 0.001
-            else:
-                logger.info("USDT/{0} 币对转换率: {1}:{2} ({0}:USDT)".format(symbol, qty_number, quantity))
-                return float(qty_number)
-        else:
-            logger.info("USDT/{0} 币对转换率: {1}:{2} ({0}:USDT)".format(symbol, 0.0, quantity))
+        except BaseException as err:
+            logger.error("{0} -> USDT 异常转换阶段, 可使用 {1}(USDT) 转换 {2}({0}), 错误提示: {3}".format(symbol, quantity, 0.0, err))
             return 0.0
 
     def DoubleCoinPlusWarehouse(self, btc_usdt_profit_loss, eth_usdt_profit_loss, trade):
