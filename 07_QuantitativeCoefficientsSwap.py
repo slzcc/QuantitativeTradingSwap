@@ -961,8 +961,6 @@ class GridStrategy(Process):
                         # 获取最新委托价格值
                         self.min_qty = self.initializeOrderPrice(trade=trade, asset='USDT', ratio=self.ratio)
 
-                        ## 基于 BTC 开仓数量，计算出 ETH 需要的开仓数量
-                        ## ETH/USDT 开单(最小下单量 0.004)
                         ethUsdtOrderQuantity = self.usdtConvertsCoins(symbol='ETH', quantity=self.min_qty)
 
                         ## 获取 ETH 方向
@@ -1017,11 +1015,12 @@ class GridStrategy(Process):
                             if open_loss_addition_mode == 1:
                                 logger.info("进入单币亏损加仓初始阶段..")
                                 # 判断当前加仓的次数
-                                if loss_covered_positions_limit == loss_covered_positions_count:
+                                if loss_covered_positions_limit <= loss_covered_positions_count:
                                     logger.warning("加仓触发限制, 无法进行加仓! 进入双币开仓初始阶段!, 当前次数: {}, 上限次数: {}".format(loss_covered_positions_count, loss_covered_positions_limit))
                                     # 计算加仓的委托数量
                                     self.min_qty = self.min_qty + ((self.min_qty * loss_plus_position_multiple) * loss_covered_positions_count)
                                 elif loss_covered_positions_limit > loss_covered_positions_count:
+                                    loss_covered_positions_count = loss_covered_positions_count + 1
                                     logger.info("{} 进行单币亏损加仓计算阶段, 当前次数: {}, 上限次数: {}, 开仓数量: ({}(委托价) * {}(加仓比例))".format('ETHUSDT', loss_covered_positions_count, loss_covered_positions_limit, self.min_qty, loss_plus_position_multiple))
                                     ## 计算 ETH 下单数量
                                     _ethUsdtOrderQuantity = self.usdtConvertsCoins(symbol='ETH', quantity=self.min_qty)
@@ -1032,7 +1031,6 @@ class GridStrategy(Process):
                                     LONG_SHORT = self.redisClient.getKey("{}_eth_order_direction_{}".format(self.token, self.direction)).split("|")[1]
 
                                     # 对当前数量加一
-                                    loss_covered_positions_count = loss_covered_positions_count + 1
                                     self.redisClient.setKey("{}_account_assets_single_coin_loss_covered_positions_count_{}".format(self.token, self.direction), loss_covered_positions_count)
 
                                     logger.info('{} 准备单币亏损加仓, 方向: {}/{}, 委托数量: {}'.format('ETHUSDT', BUY_SELL, LONG_SHORT, ethUsdtOrderQuantity))
@@ -1057,7 +1055,8 @@ class GridStrategy(Process):
                             self.initOpenSingleCurrencyContractTradingPair(symbol='NULL')
                             logger.info('{} 单币转双币加仓成功!..'.format('BTCUSDT'))
                         else:
-                            logger.info('持续监听单币模式, ETHUSDT 盈损比例 {:.2f}%, 杠杆倍数: {}, 下单价格: {}'.format(eth_usdt_profi_loss, self.ratio, float(self.redisClient.getKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction)))))
+                            order_coin_number_pool = sum([Decimal(item) for item in json.loads(self.redisClient.getKey("{}_futures_{}@usdt_order_pool_{}".format(self.token, 'eth', self.direction)))])
+                            logger.info('持续监听单币模式, ETHUSDT 盈损比例 {:.2f}%, 杠杆倍数: {}, 下单价格: {:.2f}, 下单数量: {}'.format(eth_usdt_profi_loss, self.ratio, float(self.redisClient.getKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction))), order_coin_number_pool))
 
                 except Exception as err:
                     logger.error('{} 单币主逻辑异常错误: {}'.format('ETHBTC', err))
