@@ -955,7 +955,7 @@ class GridStrategy(Process):
                                     # 计算加仓的委托数量
                                     self.min_qty = self.min_qty + ((self.min_qty * loss_plus_position_multiple) * loss_covered_positions_count)
                                 elif loss_covered_positions_limit > loss_covered_positions_count:
-                                    logger.info("{} 进行单币亏损加仓计算阶段...".format('ETHUSDT'))
+                                    logger.info("{} 进行单币亏损加仓计算阶段, 当前次数: {}, 上限次数: {}, 开仓数量: ({}(委托价) * {}(加仓比例))".format('ETHUSDT', loss_covered_positions_count, loss_covered_positions_limit, self.min_qty, loss_plus_position_multiple))
                                     # 计算加仓的委托数量
                                     self.min_qty = float("{:.3f}".format(Decimal(self.min_qty) * Decimal(loss_plus_position_multiple)))
                                     ## 基于 BTC 开仓数量，计算出 ETH 需要的开仓数量
