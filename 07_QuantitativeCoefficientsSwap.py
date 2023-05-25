@@ -949,9 +949,9 @@ class GridStrategy(Process):
                     elif len(btc_usdt_order_pool) == 0 and len(eth_usdt_order_pool) == 0:
                         time.sleep(5)
                         # 单币初始化加仓配置
-                        self.redisClient.setKey("{}_account_assets_single_coin_loss_covered_positions_count_{}".format(self.token, self.direction), self.redisClient.getKey("{}_account_assets_single_coin_loss_covered_positions_limit_{}".format(self.token, self.direction)))
+                        self.redisClient.setKey("{}_account_assets_single_coin_loss_covered_positions_count_{}".format(self.token, self.direction), 0)
                         # 双币初始化加仓配置
-                        self.redisClient.setKey("{}_account_assets_double_coin_loss_covered_positions_count_{}".format(self.token, self.direction), self.redisClient.getKey("{}_account_assets_double_coin_loss_covered_positions_limit_{}".format(self.token, self.direction)))
+                        self.redisClient.setKey("{}_account_assets_double_coin_loss_covered_positions_count_{}".format(self.token, self.direction), 0)
 
                         # 停止下单
                         if self.redisClient.getKey("{}_order_pause_{}".format(self.token, self.direction)) == 'true':
@@ -983,7 +983,7 @@ class GridStrategy(Process):
 
                         # 判断收益
                         if (eth_usdt_profi_loss) >= (self.profit * 3):
-                            logger.info('准备清仓单币, 当前 ETHUSDT 盈损比例 {}, 杠杆倍数: {}, 合计 {}'.format(eth_usdt_profi_loss, self.ratio, eth_usdt_profi_loss))
+                            logger.info('准备清仓单币, 当前 ETHUSDT 盈损比例 {}%, 杠杆倍数: {}, 合计 {}%'.format(eth_usdt_profi_loss, self.ratio, eth_usdt_profi_loss))
                             ## 设置盈利方向
                             self.redisClient.setKey("{}_profit_order_direction_{}".format(self.token, self.direction), '{}|{}|{}'.format('ETHUSDT', ETH_BUY_SELL, ETH_LONG_SHORT))
 
@@ -1056,7 +1056,7 @@ class GridStrategy(Process):
                             self.initOpenSingleCurrencyContractTradingPair(symbol='NULL')
                             logger.info('{} 单币转双币加仓成功!..'.format('BTCUSDT'))
                         else:
-                            logger.info('持续监听单币模式, ETHUSDT 盈损比例 {:.2f}, 杠杆倍数: {}, 下单价格: {}'.format(eth_usdt_profi_loss, self.ratio, float(self.redisClient.getKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction)))))
+                            logger.info('持续监听单币模式, ETHUSDT 盈损比例 {:.2f}%, 杠杆倍数: {}, 下单价格: {}'.format(eth_usdt_profi_loss, self.ratio, float(self.redisClient.getKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction)))))
 
                 except Exception as err:
                     logger.error('{} 单币主逻辑异常错误: {}'.format('ETHBTC', err))
@@ -1158,7 +1158,7 @@ class GridStrategy(Process):
                         logger.info('当前 BTCUSDT 方向: {}/{} 最新价格: {}, ETHUSDT 方向: {}/{} 最新价格: {}'.format(BTC_BUY_SELL, BTC_LONG_SHORT, self.redisClient.getKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction)), ETH_BUY_SELL, ETH_LONG_SHORT, self.redisClient.getKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction))))
 
                         if (btc_usdt_profit_loss + eth_usdt_profit_loss) >= self.profit:
-                            logger.info('准备清仓双币, 当前 BTCUSDT 盈损比例 {:.2f}, ETHUSDT 盈损比例 {:.2f}, 合计 {:.2f}'.format(btc_usdt_profit_loss, eth_usdt_profit_loss, btc_usdt_profit_loss + eth_usdt_profit_loss))
+                            logger.info('准备清仓双币, 当前 BTCUSDT 盈损比例 {:.2f}%, ETHUSDT 盈损比例 {:.2f}%, 合计 {:.2f}%'.format(btc_usdt_profit_loss, eth_usdt_profit_loss, btc_usdt_profit_loss + eth_usdt_profit_loss))
                             ## 设置盈利方向
                             if btc_usdt_profit_loss > eth_usdt_profit_loss:
                                 self.redisClient.setKey("{}_profit_order_direction_{}".format(self.token, self.direction), '{}|{}|{}'.format('BTCUSDT', BTC_BUY_SELL, BTC_LONG_SHORT))
@@ -1185,7 +1185,7 @@ class GridStrategy(Process):
                         else:
                             # 双币亏损加仓
                             self.DoubleCoinPlusWarehouse(btc_usdt_profit_loss, eth_usdt_profit_loss, trade)
-                            logger.info('持续监听双币模式, 当前 BTCUSDT 仓位价格: {} 盈损比例 {:.2f}, ETHUSDT 仓位价格: {} 盈损比例 {:.2f}, 杠杆倍数: {}, 合计 {:.2f}'.format(self.redisClient.getKey("{}_futures_btc@usdt_last_trade_price_{}".format(self.token, self.direction)), btc_usdt_profit_loss, self.redisClient.getKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction)), eth_usdt_profit_loss, self.ratio, (btc_usdt_profit_loss + eth_usdt_profit_loss)))
+                            logger.info('持续监听双币模式, 当前 BTCUSDT 仓位价格: {} 盈损比例 {:.2f}%, ETHUSDT 仓位价格: {} 盈损比例 {:.2f}%, 杠杆倍数: {}, 合计 {:.2f}%'.format(self.redisClient.getKey("{}_futures_btc@usdt_last_trade_price_{}".format(self.token, self.direction)), btc_usdt_profit_loss, self.redisClient.getKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction)), eth_usdt_profit_loss, self.ratio, (btc_usdt_profit_loss + eth_usdt_profit_loss)))
                 except Exception as err:
                     logger.error('{} 双币主逻辑异常错误: {}'.format('ETHBTC', err))
 
