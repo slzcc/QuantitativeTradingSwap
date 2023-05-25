@@ -1056,7 +1056,7 @@ class GridStrategy(Process):
                             logger.info('{} 单币转双币加仓成功!..'.format('BTCUSDT'))
                         else:
                             order_coin_number_pool = sum([Decimal(item) for item in json.loads(self.redisClient.getKey("{}_futures_{}@usdt_order_pool_{}".format(self.token, 'eth', self.direction)))])
-                            logger.info('持续监听单币模式, ETHUSDT 盈损比例 {:.2f}%, 杠杆倍数: {}, 下单价格: {:.2f}, 下单数量: {}'.format(eth_usdt_profi_loss, self.ratio, float(self.redisClient.getKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction))), order_coin_number_pool))
+                            logger.info('持续监听单币模式, ETHUSDT 盈损比例 {:.2f}%, 杠杆倍数: {}, 下单价格: {:.2f}, 下单数量: {:.2f}'.format(eth_usdt_profi_loss, self.ratio, float(self.redisClient.getKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction))), order_coin_number_pool))
 
                 except Exception as err:
                     logger.error('{} 单币主逻辑异常错误: {}'.format('ETHBTC', err))
@@ -1104,8 +1104,6 @@ class GridStrategy(Process):
                     # 如果没有被下单则进行第一次下单
                     if len(btc_usdt_order_pool) == 0 and len(eth_usdt_order_pool) == 0:
                         time.sleep(5)
-                        # 获取最新委托价格值
-                        self.min_qty = self.initializeOrderPrice(trade=trade, asset='USDT', ratio=self.ratio)
 
                         # 停止下单
                         if self.redisClient.getKey("{}_order_pause_{}".format(self.token, self.direction)) == 'true':
@@ -1113,6 +1111,9 @@ class GridStrategy(Process):
                             time.sleep(5)
                             continue
                         else:
+                            # 获取最新委托价格值
+                            self.min_qty = self.initializeOrderPrice(trade=trade, asset='USDT', ratio=self.ratio)
+
                             ## 获取 BTC 方向
                             BUY_SELL, LONG_SHORT = self.LongShortDirection('BTCUSDT')
 
