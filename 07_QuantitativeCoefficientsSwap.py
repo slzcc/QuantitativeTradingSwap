@@ -814,7 +814,7 @@ class GridStrategy(Process):
         elif symbol == "ETH":
             futures_eth_usdt_present_price = self.redisClient.getKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction))
             # usdt 转换 币 真实数量，并做四舍五入
-            qty_number = round(Decimal(quantity) / Decimal(futures_eth_usdt_present_price), 4)
+            qty_number = round(Decimal(quantity) / Decimal(futures_eth_usdt_present_price), 3)
             # 需大于 eth 最小下单价格: 0.0001
             if qty_number < Decimal('0.0001'):
                 return 0.0001
