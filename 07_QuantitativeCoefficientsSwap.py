@@ -536,6 +536,7 @@ class GridStrategy(Process):
 
         @return 可购买 BTC币 真实数量
         """
+        return 10000
         self.account_assets_total_percentage_qty = int(self.redisClient.getKey("{}_account_assets_total_percentage_qty_{}".format(self.token, self.direction)))
         # 当此值为 0 使用 _account_assets_min_qty_ 参数为默认委托价格
         try:
@@ -556,7 +557,7 @@ class GridStrategy(Process):
                         qty_number_assets = qty_number * Decimal(self.redisClient.getKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction)))
                         available_assets = Decimal(item['availableBalance'])
                         if qty_number_assets < available_assets:
-                            return float(qty_number) * ratio
+                            return float("{:.3f}".format(qty_number * ratio))
                         else:
                             logger.error("初始化委托价格不能满足使用百分比总仓位, 因超出可用资产金额! 委托价格({}) > 可用资产({})".format(float(qty_number_assets), float(available_assets)))
                             return float(self.redisClient.getKey("{}_account_assets_min_qty_{}".format(self.token, self.direction)))
@@ -611,7 +612,7 @@ class GridStrategy(Process):
             logger.info("{} 开始清仓, 方向: {}/{}, 清仓数量: {}".format(symbol, BUY_SELL, LONG_SHORT, order_pool))
             resOrder = trade.open_order(symbol, BUY_SELL, order_pool, price=None, positionSide=LONG_SHORT).json()
             if not 'orderId' in resOrder.keys():
-                logger.error('%s 清仓失败 \t %s \t %s' % (symbol, str(resOrder), PublicModels.changeTime(time.time())))
+                logger.error('{} 清仓失败, 错误提示: {}, 触发时间: {}'.format(symbol, str(resOrder), PublicModels.changeTime(time.time())))
             else:
                 # 记录订单
                 order_number_pool = json.loads(self.redisClient.getKey("{}_futures_{}@usdt_sell_order_number_pool_{}".format(self.token, _symbol_suffix, self.direction)))
@@ -637,7 +638,7 @@ class GridStrategy(Process):
                 # 清除下单方向
                 self.redisClient.setKey("{}_{}_order_direction_{}".format(self.token, _symbol_suffix, self.direction), '')
                 # 初始化单币模式
-                self.initOpenSingleCurrencyContractTradingPair()
+                self.initOpenSingleCurrencyContractTradingPair(symbol='ETH')
                 # 开启下单模式
                 self.redisClient.setKey("{}_futures_{}@usdt_order_pause_{}".format(self.token, _symbol_suffix, self.direction), 0)
 
@@ -706,8 +707,7 @@ class GridStrategy(Process):
         resOrder = trade.open_order('{}'.format(symbol), BUY_SELL, quantity, price=price, positionSide=LONG_SHORT).json()
         if not 'orderId' in resOrder.keys():
             if resOrder['msg'] == 'Margin is insufficient.':
-                logger.error('%s 建仓失败, 可用金不足 \t %s \t %s' % (
-                symbol, str(resOrder), PublicModels.changeTime(time.time())))
+                logger.error('{} 建仓失败, 可用金不足, 错误提示: {}, 触发时间: {}, 下单方向: {}/{}, 下单金额: {}'.format(symbol, str(resOrder), PublicModels.changeTime(time.time()), BUY_SELL, LONG_SHORT, quantity))
             else:
                 logger.error('{} 建仓失败, 错误信息: {}, 触发时间: {}, 下单方向: {}/{}, 下单金额: {}'.format(symbol, str(resOrder), PublicModels.changeTime(time.time()), BUY_SELL, LONG_SHORT, quantity))
             return False
@@ -774,7 +774,7 @@ class GridStrategy(Process):
             ## 基于 BTC 开仓数量，计算出 ETH 需要的开仓数量
             ## ETH/USDT 开单(最小下单量 0.004)
             _ethUsdtOrderQuantity = float(self.redisClient.getKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction))) * self.min_qty / float(self.redisClient.getKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction)))
-            ethUsdtOrderQuantity = float('%.3f' % _ethUsdtOrderQuantity)
+            ethUsdtOrderQuantity = float('{:.3f}'.format(_ethUsdtOrderQuantity))
 
             ## 获取 ETH 方向
             BUY_SELL = self.redisClient.getKey("{}_eth_order_direction_{}".format(self.token, self.direction)).split("|")[0]
@@ -874,7 +874,7 @@ class GridStrategy(Process):
                     # 如果订单中存在双币池, 且单币开关打开状态, 需要把单币开关进行关闭
                     if len(btc_usdt_order_pool) != 0 and len(eth_usdt_order_pool) != 0:
                         # 关闭单币模式
-                        self.redisClient.setKey("{}_open_single_coin_contract_trading_pair_{}".format(self.token, self.direction), '')
+                        self.initOpenSingleCurrencyContractTradingPair(symbol='')
                         continue
 
                     # 如果没有被下单则进行第一次下单
@@ -896,7 +896,7 @@ class GridStrategy(Process):
                         ## 基于 BTC 开仓数量，计算出 ETH 需要的开仓数量
                         ## ETH/USDT 开单(最小下单量 0.004)
                         _ethUsdtOrderQuantity = float(self.redisClient.getKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction))) * self.min_qty / float(self.redisClient.getKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction)))
-                        ethUsdtOrderQuantity = float('%.3f' % _ethUsdtOrderQuantity)
+                        ethUsdtOrderQuantity = float('{:.3f}'.format(_ethUsdtOrderQuantity))
 
                         ## 获取 ETH 方向
                         BUY_SELL, LONG_SHORT = self.LongShortDirection('ETHUSDT')
@@ -948,6 +948,7 @@ class GridStrategy(Process):
                             loss_plus_position_multiple = float(self.redisClient.getKey("{}_account_assets_single_coin_loss_plus_position_multiple_{}".format(self.token, self.direction)))
 
                             if open_loss_addition_mode == 1:
+                                logger.info("进入单币亏损加仓初始阶段..")
                                 # 判断当前加仓的次数
                                 if loss_covered_positions_limit == loss_covered_positions_count:
                                     logger.warning("加仓触发限制, 无法进行加仓! 进入双币开仓初始阶段!...")
@@ -960,13 +961,13 @@ class GridStrategy(Process):
                                     ## 基于 BTC 开仓数量，计算出 ETH 需要的开仓数量
                                     ## ETH/USDT 开单(最小下单量 0.004)
                                     _ethUsdtOrderQuantity = float(self.redisClient.getKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction))) * self.min_qty / float(self.redisClient.getKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction)))
-                                    ethUsdtOrderQuantity = float('%.3f' % (_ethUsdtOrderQuantity * loss_plus_position_multiple))
+                                    ethUsdtOrderQuantity = float('{:.3f}'.format(_ethUsdtOrderQuantity * loss_plus_position_multiple))
 
                                     ## 获取 ETH 方向
                                     BUY_SELL = self.redisClient.getKey("{}_eth_order_direction_{}".format(self.token, self.direction)).split("|")[0]
                                     LONG_SHORT = self.redisClient.getKey("{}_eth_order_direction_{}".format(self.token, self.direction)).split("|")[1]
 
-                                    logger.info('{} 准备加仓单币'.format('ETHUSDT'))
+                                    logger.info('{} 准备加仓单币..'.format('ETHUSDT'))
                                     if not self.CreateNewOrder('ETHUSDT', trade, BUY_SELL, LONG_SHORT, ethUsdtOrderQuantity):
                                         continue
 
@@ -986,7 +987,7 @@ class GridStrategy(Process):
                             if not self.CreateNewOrder('BTCUSDT', trade, BUY_SELL, LONG_SHORT, self.min_qty):
                                 continue
                             # 关闭单币模式
-                            self.redisClient.setKey("{}_open_single_coin_contract_trading_pair_{}".format(self.token, self.direction), '')
+                            self.initOpenSingleCurrencyContractTradingPair(symbol='')
                         else:
                             logger.info('持续监听, ETHUSDT 盈损比例 {:.2f}, 下单价格: {}'.format(eth_usdt_profi_loss, float(self.redisClient.getKey("{}_futures_eth@usdt_last_trade_price_{}".format(self.token, self.direction)))))
 
@@ -1055,7 +1056,7 @@ class GridStrategy(Process):
                             ## 基于 BTC 开仓数量，计算出 ETH 需要的开仓数量
                             ## ETH/USDT 开单(最小下单量 0.004)
                             _ethUsdtOrderQuantity = float(self.redisClient.getKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction))) * self.min_qty / float(self.redisClient.getKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction)))
-                            ethUsdtOrderQuantity = float('%.3f' % _ethUsdtOrderQuantity)
+                            ethUsdtOrderQuantity = float('{:.3f}'.format(_ethUsdtOrderQuantity))
 
                             ## 获取方向
                             BUY_SELL = 'SELL' if BUY_SELL == 'BUY' else 'BUY'
