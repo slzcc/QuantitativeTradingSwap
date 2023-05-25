@@ -45,7 +45,7 @@ def parse_args():
                                  help='Redis Host', default='127.0.0.1')
     connect_setting.add_argument('-rp', '--rport', dest='rport', type=int,
                                  help='Redis Port', default=6379)
-    connect_setting.add_argument('-rp', '--rdb', dest='rdb', type=int,
+    connect_setting.add_argument('-rdb', '--rdb', dest='rdb', type=int,
                                  help='Redis DB', default=0)
     connect_setting.add_argument('-ra', '--rauth', dest='rauth', type=str,
                                  help='Redis Auth', default='')
