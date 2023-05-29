@@ -87,7 +87,7 @@ class GridStrategy(Process):
         self.key = key                  # 用户凭证
         self.secret = secret            # 用户凭证
         self.name = 'ETHBTC'            # 开单名称
-        self.symbol = 'ETHBTC'
+        self.symbol = ['ETHBTC', 'ETHUSDT', 'BTCUSDT']
         self.direction = 'coefficient'
 
         # 初始化 Redis 默认数据
@@ -226,25 +226,29 @@ class GridStrategy(Process):
             self.redisClient.setKey("{}_account_assets_total_percentage_qty_{}".format(self.token, self.direction), 20)
         self.account_assets_total_percentage_qty = self.redisClient.getKey("{}_account_assets_total_percentage_qty_{}".format(self.token, self.direction))
 
-        # 最大利润/止损, 使用时单位会 * 100, 作为 % 使用
-        if not self.redisClient.getKey("{}_account_assets_profit_{}".format(self.token, self.direction)):
-            self.redisClient.setKey("{}_account_assets_profit_{}".format(self.token, self.direction), 4)
-        self.profit = int(self.redisClient.getKey("{}_account_assets_profit_{}".format(self.token, self.direction)))
-
         # 最小利润/止损
-        if not self.redisClient.getKey("{}_account_assets_min_profit_{}".format(self.token, self.direction)):
-            self.redisClient.setKey("{}_account_assets_min_profit_{}".format(self.token, self.direction), 0.04)
-        self.min_profit = float(self.redisClient.getKey("{}_account_assets_min_profit_{}".format(self.token, self.direction)))
+        # if not self.redisClient.getKey("{}_account_assets_min_profit_{}".format(self.token, self.direction)):
+        #     self.redisClient.setKey("{}_account_assets_min_profit_{}".format(self.token, self.direction), 0.04)
+        # self.min_profit = float(self.redisClient.getKey("{}_account_assets_min_profit_{}".format(self.token, self.direction)))
 
-        # 开仓倍数(杠該)
-        if not self.redisClient.getKey("{}_account_assets_ratio_{}".format(self.token, self.direction)):
-            self.redisClient.setKey("{}_account_assets_ratio_{}".format(self.token, self.direction), 10)
+        # 开仓倍数(杠杆)
+        # 可手动
+        if not self.redisClient.getKey("{}_account_assets_ratio_now_{}".format(self.token, self.direction)):
+            self.redisClient.setKey("{}_account_assets_ratio_now_{}".format(self.token, self.direction), 10)
+        # 历史开仓倍数, 不可手动(杠杆)
+        if not self.redisClient.getKey("{}_account_assets_ratio_history_{}".format(self.token, self.direction)):
+            self.redisClient.setKey("{}_account_assets_ratio_history_{}".format(self.token, self.direction), 0)
         self.ratio = int(self.redisClient.getKey("{}_account_assets_ratio_{}".format(self.token, self.direction)))
 
-        # 亏损(容忍比例)
+        # 最大利润/止损, 使用时单位会 * 100, 作为 % 使用
+        if not self.redisClient.getKey("{}_account_assets_profit_{}".format(self.token, self.direction)):
+            self.redisClient.setKey("{}_account_assets_profit_{}".format(self.token, self.direction), 0.4)
+        self.profit = self.ratio * int(self.redisClient.getKey("{}_account_assets_profit_{}".format(self.token, self.direction)))
+
+        # 亏损(容忍比例), 需乘以 ratio 值
         if not self.redisClient.getKey("{}_account_assets_loss_{}".format(self.token, self.direction)):
-            self.redisClient.setKey("{}_account_assets_loss_{}".format(self.token, self.direction), 0.05)
-        self.loss = float(self.redisClient.getKey("{}_account_assets_loss_{}".format(self.token, self.direction)))
+            self.redisClient.setKey("{}_account_assets_loss_{}".format(self.token, self.direction), 0.005)
+        self.loss = self.ratio * float(self.redisClient.getKey("{}_account_assets_loss_{}".format(self.token, self.direction)))
 
         # 当出现亏损到达 _account_assets_loss_ 值时, 进行加仓
         # 加仓价格是 min_qty * _account_assets_single_coin_loss_plus_position_multiple_
@@ -512,55 +516,26 @@ class GridStrategy(Process):
             logger.error("无法正常获取订单执行方法报错 {}, 对象数据: {}".format(err, orderId))
             return True
 
-    def initializeOrderPriceOld(self, trade, asset='USDT', ratio=1):
+    def GetRatio(self, trade):
         """
-        初始化默认委托价格
-        1、值 小于 3 时默认使用 _account_assets_min_qty_ 作为委托价格
-        2、值 大于/等于 3 或获取账户总合约资产的百分比(USDT), 计算委托价格
-        3、超过 100 默认使用 _account_assets_min_qty_ 作为委托价格
-
-        当总资产计算得出不能满足 开仓 0.001/BTC 会向上补全 0.001/BTC 最小下单价格
-        {'accountAlias': 'FzXqoCfWfWXqsRTi',
-          'asset': 'USDT',
-          'balance': '166.76892433',
-          'crossWalletBalance': '166.76892433',
-          'crossUnPnl': '-0.22548459',
-          'availableBalance': '143.02746490',
-          'maxWithdrawAmount': '143.02746490',
-          'marginAvailable': True,
-          'updateTime': 1683351333603}
-
-        @return 可购买 BTC币 真实数量
+        获取最新的下单倍数(杠杆)
         """
-        return 10000
-        # 获取账户可建仓百分比
-        # 当此值为 0 使用 _account_assets_min_qty_ 参数为默认委托价格
-        self.account_assets_total_percentage_qty = int(self.redisClient.getKey("{}_account_assets_total_percentage_qty_{}".format(self.token, self.direction)))
-        try:
-            if self.account_assets_total_percentage_qty < 3:
-                return float(self.redisClient.getKey("{}_account_assets_min_qty_{}".format(self.token, self.direction)))
-            elif self.account_assets_total_percentage_qty >= 3 and self.account_assets_total_percentage_qty < 100:
-                account_assets_list = trade.get_balance().json()
-                for item in account_assets_list:
-                    if item["asset"] == asset:
-                        # 获取百分比资产
-                        account_assets = Decimal(item["balance"]) * Decimal(self.account_assets_total_percentage_qty / 100)
-                        # usdt 转换 币 真实数量，并做四舍五入
-                        qty_number = round(account_assets / Decimal(self.redisClient.getKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction))), 3)
-                        # 需大于 btc 最小下单价格: 0.001
-                        if qty_number < Decimal('0.001'):
-                            return float(self.redisClient.getKey("{}_account_assets_min_qty_{}".format(self.token, self.direction)))
-                        # 判断是否大于 可用资产
-                        qty_number_assets = qty_number * Decimal(self.redisClient.getKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction)))
-                        available_assets = Decimal(item['availableBalance'])
-                        if qty_number_assets < available_assets:
-                            return float("{:.3f}".format(qty_number * ratio))
-                        else:
-                            logger.error("初始化委托价格不能满足使用百分比总仓位, 因超出可用资产金额! 委托价格({}) > 可用资产({})".format(float(qty_number_assets), float(available_assets)))
-                            return float(self.redisClient.getKey("{}_account_assets_min_qty_{}".format(self.token, self.direction)))
-            return float(self.redisClient.getKey("{}_account_assets_min_qty_{}".format(self.token, self.direction)))
-        except:
-            return float(self.redisClient.getKey("{}_account_assets_min_qty_{}".format(self.token, self.direction)))
+        symbol_list = ["ETHUSDT", "BTCUSDT"]
+        account_assets_ratio_now = self.redisClient.getKey("{}_account_assets_ratio_now_{}".format(self.token, self.direction))
+        account_assets_ratio_history = self.redisClient.getKey("{}_account_assets_ratio_history_{}".format(self.token, self.direction))
+
+        if int(account_assets_ratio_now) != int(account_assets_ratio_history):
+            _tmp_account_assets_ratio_history = account_assets_ratio_history
+            self.redisClient.setKey("{}_account_assets_ratio_history_{}".format(self.token, self.direction), account_assets_ratio_now)
+            account_assets_ratio_history = self.redisClient.getKey("{}_account_assets_ratio_history_{}".format(self.token, self.direction))
+            try:
+                # 调整开仓杠杆
+                for symbol in symbol_list:
+                    trade.set_leverage(symbol, account_assets_ratio_history).json()
+                    logger.info("{} 调整杠杆倍数成功, 已从倍数 {} 调整到倍数: {}".format(symbol, _tmp_account_assets_ratio_history, account_assets_ratio_history))
+            except BaseException as err:
+                logger.error("调整杠杆倍数失败: 需调整倍数 {}, 错误提示: {}".format(account_assets_ratio_history, err))
+        return int(account_assets_ratio_history)
 
     def initializeOrderPrice(self, trade, asset='USDT', ratio=1):
         """
@@ -627,11 +602,11 @@ class GridStrategy(Process):
         # 判定如果大于 profit 则进行清仓
         if LONG_SHORT == 'SHORT':
             ## 盈亏百分比
-            usdt_profi_loss = (usdt_present_price - usdt_last_trade_price) / usdt_present_price * self.ratio * 100
+            usdt_profit_loss = (usdt_present_price - usdt_last_trade_price) / usdt_present_price * self.ratio * 100
         else:
             ## 盈亏百分比
-            usdt_profi_loss = (usdt_last_trade_price - usdt_present_price) / usdt_present_price * self.ratio * 100
-        return usdt_profi_loss
+            usdt_profit_loss = (usdt_last_trade_price - usdt_present_price) / usdt_present_price * self.ratio * 100
+        return usdt_profit_loss
 
     def TrendShift(self, buy_sell):
         """
@@ -753,6 +728,8 @@ class GridStrategy(Process):
 
         @return False/True
         """
+        # 调整开仓杠杆
+        self.ratio = self.GetRatio(trade=trade)
         _symbol_suffix = symbol.replace("USDT", "").lower()
         resOrder = trade.open_order('{}'.format(symbol), BUY_SELL, quantity, price=price, positionSide=LONG_SHORT).json()
         if not 'orderId' in resOrder.keys():
@@ -867,13 +844,15 @@ class GridStrategy(Process):
             if checkAccount["code"] != -4059:
                 raise AssertionError("账户凭证存在异常, 返回内容 {}, 请检查后继续! 可能犹豫超时导致的时间加密数据超出认证时间导致.".format(checkAccount))
 
-        # 变换逐全仓, 默认逐仓
-        trade.change_margintype(self.symbol, isolated=False).json()
+        for symbol in self.symbol:
+            # 变换逐全仓, 默认逐仓
+            trade.change_margintype(symbol, isolated=False).json()
         # 调整开仓杠杆
-        trade.set_leverage(self.symbol, self.ratio).json()
+        self.ratio = self.GetRatio(trade=trade)
+
         # 设置当前启动时间
         self.redisClient.setKey("{}_t_start_{}".format(self.token, self.direction), time.time())
-        logger.info('{} U本位开始运行 \t {} \t #################'.format(self.symbol, PublicModels.changeTime(time.time())))
+        logger.info('{} U本位合约开始运行 \t {} \t #################################################################'.format(self.symbol[0], PublicModels.changeTime(time.time())))
 
         # 新进程, 获取 BTC/USDT 价格
         p1 = Process(target=self.getBinanceBtcUsdtKlineWS)
@@ -898,9 +877,8 @@ class GridStrategy(Process):
                 continue
 
             # 初始化变量值
-            self.profit = int(self.redisClient.getKey("{}_account_assets_profit_{}".format(self.token, self.direction)))
-            self.min_profit = float(self.redisClient.getKey("{}_account_assets_min_profit_{}".format(self.token, self.direction)))
-            self.loss = float(self.redisClient.getKey("{}_account_assets_loss_{}".format(self.token, self.direction)))
+            self.profit = self.ratio * int(self.redisClient.getKey("{}_account_assets_profit_{}".format(self.token, self.direction)))
+            self.loss = self.ratio * float(self.redisClient.getKey("{}_account_assets_loss_{}".format(self.token, self.direction)))
             self.open_single_currency_contract_trading_pair = self.redisClient.getKey("{}_open_single_coin_contract_trading_pair_{}".format(self.token, self.direction))
 
             # 判断当前是否开启单币仓位模式
@@ -959,6 +937,7 @@ class GridStrategy(Process):
                             logger.info('{} 停止下单状态'.format('BTCUSDT and ETHUSDT'))
                             time.sleep(5)
                             continue
+
                         # 获取最新委托价格值
                         self.min_qty = self.initializeOrderPrice(trade=trade, asset='USDT', ratio=self.ratio)
 
@@ -1003,7 +982,6 @@ class GridStrategy(Process):
                             当前收益 <= 容忍损失
                             进行对冲开单
                             """
-                            # 获取最新委托价格值
                             self.min_qty = self.initializeOrderPrice(trade=trade, asset='USDT', ratio=self.ratio)
 
                             # 判断是否打开亏损加仓
