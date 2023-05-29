@@ -242,8 +242,8 @@ class GridStrategy(Process):
 
         # 最大利润/止损, 使用时单位会 * 100, 作为 % 使用
         if not self.redisClient.getKey("{}_account_assets_profit_{}".format(self.token, self.direction)):
-            self.redisClient.setKey("{}_account_assets_profit_{}".format(self.token, self.direction), 0.4)
-        self.profit = self.ratio * int(self.redisClient.getKey("{}_account_assets_profit_{}".format(self.token, self.direction)))
+            self.redisClient.setKey("{}_account_assets_profit_{}".format(self.token, self.direction), 0.004)
+        self.profit = self.ratio * float(self.redisClient.getKey("{}_account_assets_profit_{}".format(self.token, self.direction)))
 
         # 亏损(容忍比例), 需乘以 ratio 值
         if not self.redisClient.getKey("{}_account_assets_loss_{}".format(self.token, self.direction)):
@@ -877,7 +877,7 @@ class GridStrategy(Process):
                 continue
 
             # 初始化变量值
-            self.profit = self.ratio * int(self.redisClient.getKey("{}_account_assets_profit_{}".format(self.token, self.direction)))
+            self.profit = self.ratio * float(self.redisClient.getKey("{}_account_assets_profit_{}".format(self.token, self.direction)))
             self.loss = self.ratio * float(self.redisClient.getKey("{}_account_assets_loss_{}".format(self.token, self.direction)))
             self.open_single_currency_contract_trading_pair = self.redisClient.getKey("{}_open_single_coin_contract_trading_pair_{}".format(self.token, self.direction))
 
@@ -960,7 +960,7 @@ class GridStrategy(Process):
                         logger.info('ETHUSDT 方向: {}/{}, 最新价格: {}, 系数: {}'.format(ETH_BUY_SELL, ETH_LONG_SHORT, float(self.redisClient.getKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction))), float(self.redisClient.getKey("{}_spot_eth@btc_present_price_{}".format(self.token, self.direction)))))
 
                         # 判断收益
-                        if (eth_usdt_profi_loss) >= (self.profit * 3):
+                        if (eth_usdt_profi_loss) >= (self.profit * 100 * 3):
                             logger.info('准备清仓单币, 当前 ETHUSDT 盈损比例 {}%, 杠杆倍数: {}, 合计 {}%'.format(eth_usdt_profi_loss, self.ratio, eth_usdt_profi_loss))
                             ## 设置盈利方向
                             self.redisClient.setKey("{}_profit_order_direction_{}".format(self.token, self.direction), '{}|{}|{}'.format('ETHUSDT', ETH_BUY_SELL, ETH_LONG_SHORT))
@@ -1137,7 +1137,7 @@ class GridStrategy(Process):
                         btc_usdt_profit_loss, eth_usdt_profit_loss = self.symbolStatisticalIncome('BTCUSDT'), self.symbolStatisticalIncome('ETHUSDT')
                         logger.info('当前 BTCUSDT 方向: {}/{} 最新价格: {}, ETHUSDT 方向: {}/{} 最新价格: {}'.format(BTC_BUY_SELL, BTC_LONG_SHORT, self.redisClient.getKey("{}_futures_btc@usdt_present_price_{}".format(self.token, self.direction)), ETH_BUY_SELL, ETH_LONG_SHORT, self.redisClient.getKey("{}_futures_eth@usdt_present_price_{}".format(self.token, self.direction))))
 
-                        if (btc_usdt_profit_loss + eth_usdt_profit_loss) >= self.profit:
+                        if (btc_usdt_profit_loss + eth_usdt_profit_loss) >= (self.profit * 100):
                             logger.info('准备清仓双币, 当前 BTCUSDT 盈损比例 {:.2f}%, ETHUSDT 盈损比例 {:.2f}%, 合计 {:.2f}%'.format(btc_usdt_profit_loss, eth_usdt_profit_loss, btc_usdt_profit_loss + eth_usdt_profit_loss))
                             ## 设置盈利方向
                             if btc_usdt_profit_loss > eth_usdt_profit_loss:
