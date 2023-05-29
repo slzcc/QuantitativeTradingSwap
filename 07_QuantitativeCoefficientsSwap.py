@@ -238,7 +238,7 @@ class GridStrategy(Process):
         # 历史开仓倍数, 不可手动(杠杆)
         if not self.redisClient.getKey("{}_account_assets_ratio_history_{}".format(self.token, self.direction)):
             self.redisClient.setKey("{}_account_assets_ratio_history_{}".format(self.token, self.direction), 0)
-        self.ratio = int(self.redisClient.getKey("{}_account_assets_ratio_{}".format(self.token, self.direction)))
+        self.ratio = int(self.redisClient.getKey("{}_account_assets_ratio_history_{}".format(self.token, self.direction)))
 
         # 最大利润/止损, 使用时单位会 * 100, 作为 % 使用
         if not self.redisClient.getKey("{}_account_assets_profit_{}".format(self.token, self.direction)):
