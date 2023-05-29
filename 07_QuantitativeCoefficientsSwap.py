@@ -590,6 +590,7 @@ class GridStrategy(Process):
     def symbolStatisticalIncome(self, symbol):
         """
         计算收益
+        LONG/SHORT
         """
         _symbol_suffix = symbol.replace("USDT", "").lower()
         ## 当前价格
@@ -600,7 +601,7 @@ class GridStrategy(Process):
         LONG_SHORT = self.redisClient.getKey("{}_{}_order_direction_{}".format(self.token, _symbol_suffix, self.direction)).split("|")[1]
 
         # 判定如果大于 profit 则进行清仓
-        if LONG_SHORT == 'SHORT':
+        if LONG_SHORT == 'LONG':
             ## 盈亏百分比
             usdt_profit_loss = (usdt_present_price - usdt_last_trade_price) / usdt_present_price * self.ratio * 100
         else:
@@ -693,29 +694,37 @@ class GridStrategy(Process):
         判断下单方向
         BUY/SELL | LONG/SHORT
         """
+        BUY_SELL = ''
+        LONG_SHORT = ''
         # 是否开启盈利反方向开仓模式
         open_profit_order_direction = int(self.redisClient.getKey("{}_open_profit_order_direction_{}".format(self.token, self.direction)))
         profit_order_direction = self.redisClient.getKey("{}_profit_order_direction_{}".format(self.token, self.direction))
         if (open_profit_order_direction == 1) and profit_order_direction:
             # 重置盈利方向
             self.redisClient.setKey("{}_profit_order_direction_{}".format(self.token, self.direction), '')
-            return self.TrendShift(profit_order_direction.split("|")[1]), profit_order_direction.split("|")[2]
+            BUY_SELL, LONG_SHORT = self.TrendShift(profit_order_direction.split("|")[1]), profit_order_direction.split("|")[2]
+            logger.info("初始化 {} 建仓方向: {}/{}, 使用模式: {}, 判定值: {}/{}".format(symbol, BUY_SELL, LONG_SHORT, '盈利反方向开仓', open_profit_order_direction, profit_order_direction))
+            return BUY_SELL, LONG_SHORT
 
+        long_short_direction = int(self.redisClient.getKey("{}_long_short_direction_{}".format(self.token, self.direction)))
         if symbol == "BTCUSDT":
-            if int(self.redisClient.getKey("{}_long_short_direction_{}".format(self.token, self.direction))) == 1:
-                return 'BUY', 'LONG'
-            elif int(self.redisClient.getKey("{}_long_short_direction_{}".format(self.token, self.direction))) == 0:
-                return 'SELL', 'SHORT'
+            if long_short_direction == 1:
+                BUY_SELL, LONG_SHORT = 'BUY', 'LONG'
+            elif long_short_direction == 0:
+                BUY_SELL, LONG_SHORT = 'SELL', 'SHORT'
             else:
-                return 'BUY', 'LONG'
+                BUY_SELL, LONG_SHORT = 'BUY', 'LONG'
 
         elif symbol == "ETHUSDT":
-            if int(self.redisClient.getKey("{}_long_short_direction_{}".format(self.token, self.direction))) == 1:
-                return 'SELL', 'SHORT'
-            elif int(self.redisClient.getKey("{}_long_short_direction_{}".format(self.token, self.direction))) == 0:
-                return 'BUY', 'LONG'
+            if long_short_direction == 1:
+                BUY_SELL, LONG_SHORT = 'SELL', 'SHORT'
+            elif long_short_direction == 0:
+                BUY_SELL, LONG_SHORT = 'BUY', 'LONG'
             else:
-                return 'SELL', 'SHORT'
+                BUY_SELL, LONG_SHORT = 'SELL', 'SHORT'
+
+        logger.info("初始化 {} 建仓方向: {}/{}, 使用方式: {}, 判定值: {}".format(symbol, BUY_SELL, LONG_SHORT, '系数大小', long_short_direction))
+        return BUY_SELL, LONG_SHORT
 
     def CreateNewOrder(self, symbol, trade, BUY_SELL, LONG_SHORT, quantity, price=None):
         """
