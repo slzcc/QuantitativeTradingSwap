@@ -823,7 +823,7 @@ class GridStrategy(Process):
             logger.info("已达到双币亏损后加仓上限!")
             return
         # 判定两个收益率都是小于 -1, 且 eth 亏损的3倍大于 btc 的亏损时, 对 eth 进行加仓
-        if (-1 > btc_usdt_profit_loss) and (-1 > eth_usdt_profit_loss) and ((eth_usdt_profit_loss * 3) > btc_usdt_profit_loss):
+        if (-1 > btc_usdt_profit_loss) and (-1 > eth_usdt_profit_loss) and ((eth_usdt_profit_loss * 3 * ((self.profit * 100) * self.ratio)) > btc_usdt_profit_loss):
             # 获取最新委托价格值
             self.min_qty = self.initializeOrderPrice(trade=trade, asset='USDT', ratio=self.ratio)
             # 计算 ETH 购买数量
