@@ -578,7 +578,7 @@ class GridStrategy(Process):
                         # 判断是否大于 可用资产
                         available_assets = Decimal(item['availableBalance'])
                         if account_assets < available_assets:
-                            logger.info("计算仓位百分比账户资金为: {}, 倍数: {}".format(account_assets, ratio))
+                            logger.info("计算仓位百分比账户资金为: {}, 杠杆倍数: {}(真实建仓需乘以杠杆数)".format(account_assets, ratio))
                             return float("{:.3f}".format(account_assets * ratio))
                         else:
                             logger.error("初始化委托价格不能满足使用百分比总仓位, 因超出可用资产金额! 委托价格({}) > 可用资产({})".format(float(account_assets), float(available_assets)))
@@ -609,7 +609,7 @@ class GridStrategy(Process):
             usdt_profit_loss = (usdt_last_trade_price - usdt_present_price) / usdt_present_price * self.ratio * 100
         return usdt_profit_loss
 
-    def TrendShift(self, buy_sell):
+    def TrendBuySellShift(self, buy_sell):
         """
         买卖 转换
         用于买卖取反效果
@@ -620,6 +620,17 @@ class GridStrategy(Process):
         elif buy_sell == "SELL":
             return 'BUY'
 
+    def TrendLongShortShift(self, long_short):
+        """
+        多空 转换
+        用于买卖取反效果
+        Example: LONG == SHORT
+        """
+        if long_short == "LONG":
+            return 'SHORT'
+        elif long_short == "SHORT":
+            return 'LONG'
+
     def symbolForcedLiquidation(self, trade, symbol):
         """
         清仓
@@ -627,7 +638,7 @@ class GridStrategy(Process):
         _symbol_suffix = symbol.replace("USDT", "").lower()
         try:
             ## 获取方向
-            BUY_SELL = self.TrendShift(self.redisClient.getKey("{}_{}_order_direction_{}".format(self.token, _symbol_suffix, self.direction)).split("|")[0])
+            BUY_SELL = self.TrendBuySellShift(self.redisClient.getKey("{}_{}_order_direction_{}".format(self.token, _symbol_suffix, self.direction)).split("|")[0])
             LONG_SHORT = self.redisClient.getKey("{}_{}_order_direction_{}".format(self.token, _symbol_suffix, self.direction)).split("|")[1]
             ## 获取当前下单池
             order_pool = float(sum([Decimal(item) for item in json.loads(self.redisClient.getKey("{}_futures_{}@usdt_order_pool_{}".format(self.token, _symbol_suffix, self.direction)))]))
@@ -702,7 +713,7 @@ class GridStrategy(Process):
         if (open_profit_order_direction == 1) and profit_order_direction:
             # 重置盈利方向
             self.redisClient.setKey("{}_profit_order_direction_{}".format(self.token, self.direction), '')
-            BUY_SELL, LONG_SHORT = self.TrendShift(profit_order_direction.split("|")[1]), profit_order_direction.split("|")[2]
+            BUY_SELL, LONG_SHORT = self.TrendBuySellShift(profit_order_direction.split("|")[1]), self.TrendLongShortShift(profit_order_direction.split("|")[2])
             logger.info("初始化 {} 建仓方向: {}/{}, 使用模式: {}, 判定值: {}/{}".format(symbol, BUY_SELL, LONG_SHORT, '盈利反方向开仓', open_profit_order_direction, profit_order_direction))
             return BUY_SELL, LONG_SHORT
 
@@ -1117,9 +1128,9 @@ class GridStrategy(Process):
                             # 计算 ETH 购买数量
                             ethUsdtOrderQuantity = self.usdtConvertsCoins(symbol='ETH', quantity=self.min_qty)
 
-                            ## 获取方向
-                            BUY_SELL = 'SELL' if BUY_SELL == 'BUY' else 'BUY'
-                            LONG_SHORT = 'SHORT' if LONG_SHORT == 'LONG' else 'LONG'
+                            ## 获取方向(取反)
+                            BUY_SELL = self.TrendBuySellShift(BUY_SELL)
+                            LONG_SHORT = self.TrendLongShortShift(LONG_SHORT)
 
                             logger.info('{} 准备建仓双币, 下单方向: {}/{}, 下单数量: {}'.format('ETCUSDT', BUY_SELL, LONG_SHORT, ethUsdtOrderQuantity))
 
