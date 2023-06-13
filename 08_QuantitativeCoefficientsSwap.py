@@ -193,8 +193,8 @@ class GridStrategy(Process):
         # 趋势默认值, 当前价格高于此值时 ETH 开空, BTC 开多
         # 峰值 0.074, 2023-05-24 压力值 0.0677
         self.redis_key_long_short_trend = "{}_long_short_trend_{}".format(self.token, self.direction)
-        if not self.redisClient.getKey(self.redis_key_forced_liquidation):
-            self.redisClient.setKey(self.redis_key_forced_liquidation, '0.0677')
+        if not self.redisClient.getKey(self.redis_key_long_short_trend):
+            self.redisClient.setKey(self.redis_key_long_short_trend, '0.0677')
 
         # ETH 下单方向
         # BUY/SELL | LONG/SHORT
