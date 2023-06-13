@@ -12,6 +12,7 @@
 #
 #***********************************************
 
+import signal
 import time
 import datetime
 import json
@@ -44,6 +45,13 @@ def ShanghaiDateTime(sec):
     #     return datetime.datetime.now().timetuple()
     # return (datetime.datetime.now() + datetime.timedelta(hours=8)).timetuple()
     return datetime.datetime.now(pytz.timezone('Asia/Shanghai')).timetuple()
+
+def term(sig_num, addtion):
+    """
+    DOCS https://www.jianshu.com/p/6ad770692f41
+    """
+    print('current pid is {}, group id is {}'.format(os.getpid(), os.getpgrp()))
+    os.killpg(os.getpgid(os.getpid()), signal.SIGKILL)
 
 # 创建日志器对象
 ######################################## Logging __name__ #######################################
@@ -926,12 +934,16 @@ class GridStrategy(Process):
 
         # 新进程, 获取 BTC/USDT 价格
         p1 = Process(target=self.getBinanceBtcUsdtKlineWS)
+        p1.daemon = True
         # 新进程, 获取 ETH/USDT 价格
         p2 = Process(target=self.getBinanceEthUsdtKlineWS)
+        p2.daemon = True
         # 新进程, 获取 ETH/BTC 价格
         p3 = Process(target=self.getBinanceEthBtcKlineWS)
+        p3.daemon = True
         # 判断方向
         p4 = Process(target=self.LongShortTrend)
+        p4.daemon = True
         p1.start()
         p2.start()
         p3.start()
@@ -961,6 +973,7 @@ class GridStrategy(Process):
 
                         ## ETH/USDT 清仓
                         g2 = Process(target=self.symbolForcedLiquidation, args=(trade, 'ETH{}'.format(self.stablecoin.upper()),))
+                        g2.daemon = True
                         g2.start()
 
                         # 设置暂停建仓
@@ -1037,6 +1050,7 @@ class GridStrategy(Process):
 
                             ## ETH/USDT 清仓
                             g2 = Process(target=self.symbolForcedLiquidation, args=(trade, 'ETH{}'.format(self.stablecoin.upper()),))
+                            g2.daemon = True
                             g2.start()
 
                             # 初始化暂停建仓
@@ -1118,9 +1132,10 @@ class GridStrategy(Process):
 
                         ## BTC/USDT 清仓
                         g1 = Process(target=self.symbolForcedLiquidation, args=(trade, 'BTC{}'.format(self.stablecoin.upper()),))
+                        g1.daemon = True
                         ## ETH/USDT 清仓
                         g2 = Process(target=self.symbolForcedLiquidation, args=(trade, 'ETH{}'.format(self.stablecoin.upper()),))
-
+                        g2.daemon = True
                         g1.start()
                         g2.start()
 
@@ -1217,9 +1232,10 @@ class GridStrategy(Process):
 
                             ## BTC/USDT 清仓
                             g1 = Process(target=self.symbolForcedLiquidation, args=(trade, 'BTC{}'.format(self.stablecoin.upper()),))
+                            g1.daemon = True
                             ## ETH/USDT 清仓
                             g2 = Process(target=self.symbolForcedLiquidation, args=(trade, 'ETH{}'.format(self.stablecoin.upper()),))
-
+                            g2.daemon = True
                             g1.start()
                             g2.start()
 
@@ -1240,6 +1256,7 @@ class GridStrategy(Process):
                     logger.error('{} 双币主逻辑异常错误: {}'.format('ETHBTC', err))
 
 if __name__ == '__main__':
+    signal.signal(signal.SIGTERM, term)
     args = command_line_args(sys.argv[1:])
     conn_setting = {'key': args.key, 'secret': args.secret, 'token': args.token, 'redis_host': args.rhost, 'redis_port': args.rport, 'redis_db': args.rdb, 'redis_auth': args.rauth}
     
