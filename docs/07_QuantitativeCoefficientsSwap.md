@@ -1,13 +1,13 @@
-## 02_QuantitativeCoefficientsSwap
+## 07_QuantitativeCoefficientsSwap
 
-> 本机装备 redis 不能存在 auth, 当脚本启动时需要通过 127.0.0.1:6379 进行连接.
+> 当脚本启动时需要通过 127.0.0.1:6379 进行连接, 可以通过 `python3 07_QuantitativeCoefficientsSwap.py --help` 连接 redis 所需启动配置参数. 
 
 基于系数 `ETH/BTC` 币对进行交易, 当前脚本启动时, 基于合约下单 `ETH/USDT` 和 `BTC/USDT` 开多开空基于 `ETH/BTC` 的阀值。
 
 启动命令:
 
 ```
-$ python3 07_QuantitativeCoefficientsSwap.py --key xx --secret xx --token WtCAw1bLCV8
+$ python3 07_QuantitativeCoefficientsSwap.py --key xx --secret xx --token g452bLCV8GcoWZq --rauth 'oM3K/+DoUyetI16Rerc7wo'
 ```
 
 ### 暂停下单
