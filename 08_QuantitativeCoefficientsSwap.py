@@ -742,7 +742,7 @@ class GridStrategy(Process):
 
         while True:
             try:
-                if float(self.redisClient.getKey(self.redis_key_spot_eth_btc_present_price)) > float(self.redisClient.getKey(self.redis_key_forced_liquidation)):
+                if float(self.redisClient.getKey(self.redis_key_spot_eth_btc_present_price)) > float(self.redisClient.getKey(self.redis_key_long_short_trend)):
                     self.redisClient.setKey(self.redis_key_long_short_direction, '1')
                 else:
                     self.redisClient.setKey(self.redis_key_long_short_direction, '0')
